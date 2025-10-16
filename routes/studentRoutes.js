@@ -29,7 +29,7 @@ router.get("/:id", studentController.getUserById);
 
 router.use(restrictTo("admin", "superadmin"));
 router.post("/:id/reset-password", studentController.resetPassword);
-router.put("/:id",  studentController.updateUser);
+router.put("/:id",  studentController.updateStudent);
 
 router.use(restrictTo("superadmin"));
 router.delete("/:id",  studentController.deleteUser);

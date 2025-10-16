@@ -140,17 +140,16 @@ exports.deleteUser = async (req, res) => {
 };
 
 
-exports.updateUser = async (req, res) => {
-    const userId = parseInt(req.params.id);
-    const { firstName, lastName, email, username, role, department, level } = req.body; 
-    let table = role === 'student' ? 'students' : 'staff';
+exports.updateStudent = async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { first_name, last_name, email, username, department, level } = req.body; 
     try {
-        const user = await Student.findById(userId);
-        if (!user) {
-            return res.status(404).json({ success: false, code: 404, message:'User not found' });
+        const student = await Student.findById(id);
+        if (!student) {
+            return res.status(404).json({ success: false, code: 404, message:'Student not found' });
         }
-        await Student.execute(`
-            UPDATE ${table} 
+        const updated = await Student.execute(`
+            UPDATE students
             SET first_name = ?, 
             last_name = ?, 
             email = ?, 
@@ -158,11 +157,11 @@ exports.updateUser = async (req, res) => {
             department_id = ?,
             level_id = ? 
             WHERE id = ?`, 
-        [firstName, lastName, email, username, department, level, userId]);  
-        return res.status(200).json({ success: true, code: 200, message:'User updated successfully', user }); 
+        [first_name, last_name, email, username, department, level, id]);  
+        return res.status(200).json({ success: true, code: 200, message:'Student updated successfully', student: updated }); 
     } catch (error) {
-        console.log('Error updating user:', error);
-        return res.status(500).json({ success: false, code: 500, message:error });
+        console.log('Error updating student:', error);
+        return res.status(500).json({ success: false, code: 500, message: error.message });
     }
 };
 
