@@ -4,7 +4,7 @@ class Session {
     static async getAllSessions() {
         const [rows] = await db.query(`
             SELECT sessions.id as id, sessions.name as name, 
-            IF(sessions.active, "true", "false") as active
+            IF(sessions.active, 'true', 'false') as active
             FROM sessions `);
         // For each session, fetch semesters
         for (let session of rows) {

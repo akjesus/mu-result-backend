@@ -35,12 +35,12 @@ exports.getAllResults = async (req, res) => {
             params.push(semester);
         }
         const whereSQL = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
-        let query = `SELECT (results.cat_score + results.exam_score) as total_score, 
+        let query = `SELECT (results.first_quiz + results.second_quiz + results.exam_score) as total_score, 
             results.grade, CONCAT(students.first_name,' ', students.last_name)as student_name, 
             courses.name AS course, semesters.name AS semester,
             sessions.name AS session, departments.name AS department, levels.name AS level
             FROM results
-            JOIN students ON results.registration_number = students.registration_number
+            JOIN students ON results.mat_no = students.mat_no
             JOIN courses ON results.course_id = courses.id
             JOIN sessions ON results.session_id = sessions.id
             JOIN semesters ON results.semester_id = semesters.id
@@ -49,7 +49,7 @@ exports.getAllResults = async (req, res) => {
             ${whereSQL}
             LIMIT ? OFFSET ?`;
         let countQuery = `SELECT COUNT(*) as total FROM results
-            JOIN students ON results.registration_number = students.registration_number
+            JOIN students ON results.mat_no = students.mat_no
             ${whereSQL}`;
         const queryParams = [...params, limit, offset];
         const [results] = await Result.execute(query, queryParams);
@@ -86,20 +86,20 @@ exports.getResultById = async (req, res) => {
 };
 
 exports.createResult = async (req, res) => {
-    const { registration_number, course_id, cat_score, exam_score, semester_id, session_id } = req.body.results;
+    const { mat_no, course_id, first_quiz, second_quiz, exam_score, semester_id, session_id } = req.body.results;
     //validate inputs
-    if (!registration_number || !course_id || !cat_score  || !exam_score  || !semester_id || !session_id ) {
+    if (!mat_no || !course_id || !first_quiz || !second_quiz || !exam_score || !semester_id || !session_id) {
         return res.status(400).json({ success: false, code: 400, message: "All fields are required!" });
     }
 
     try {
         // Check for duplicate
-        const [existing] = await Result.findByStudentAndCourse(registration_number, course_id);
+        const [existing] = await Result.findByStudentAndCourse(mat_no, course_id);
         if (existing && existing.length > 0) {
             return res.status(409).json({ success: false, code: 409, message: "Result for this student and course already exists!" });
         }
 
-        const newResultId = await Result.createResult(registration_number, course_id, cat_score, exam_score, semester_id, session_id);
+        const newResultId = await Result.createResult(mat_no, course_id, first_quiz, second_quiz, exam_score, semester_id, session_id);
         return res.status(201).json({success: true, code: 201, message: 'Result created successfully', result_id: newResultId });
     }
     catch (error) {
@@ -176,28 +176,29 @@ exports.bulkUploadResults = async (req, res) => {
             let errorCount = 0;
             let errorRows = [];
             for (const r of results) {
-                const registration_number = r.registration_number;
+                const mat_no = r.mat_no;
                 // Check for duplicate
                 try {
-                    const [existing] = await Result.findByStudentAndCourse(registration_number, course_id);
+                    const [existing] = await Result.findByStudentAndCourse(mat_no, course_id);
                     if (existing && existing.length > 0) {
-                        console.log(`Duplicate found for ${registration_number}, skipping.`);
+                        console.log(`Duplicate found for ${mat_no}, skipping.`);
                         continue;
                     }
                     const result = await Result.createResult(
-                        registration_number,
+                        mat_no,
                         course_id,
-                        parseFloat(r.cat_score),
+                        parseFloat(r.first_quiz),
+                        parseFloat(r.second_quiz),
                         parseFloat(r.exam_score),
                         session_id,
                         semester_id
                     );
-                    console.log(`Inserted result for ${registration_number}:`, result);
+                    console.log(`Inserted result for ${mat_no}:`, result);
                     insertedCount++;
                 } catch (error) {
                     errorCount++;
                     errorRows.push({ row: r, error: error.message });
-                    console.log(`Error inserting row for ${registration_number}:`, error.message);
+                    console.log(`Error inserting row for ${mat_no}:`, error.message);
                     continue;
                 }
             }
@@ -224,7 +225,7 @@ exports.getResultsByStudent = async (req, res) => {
     if (!userDetails) {
         return res.status(404).json({ success: false, code: 404, message: 'User details not found' });  
     }
-    const registration_number = userDetails.matric;
+    const mat_no = userDetails.matric;
     try {
         // Destructure from query
         const { session, level, semester } = req.query;
@@ -236,38 +237,38 @@ exports.getResultsByStudent = async (req, res) => {
             // Fetch for specific semester
             [results] = await db.query(
                 `SELECT results.id, results.course_id, courses.code as code, courses.name AS title, students.first_name, 
-                students.last_name, students.registration_number, 
-                results.cat_score + results.exam_score AS total_score, results.grade,
+                students.last_name, students.mat_no, 
+                results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,
                 courses.credit_load as credit, semesters.name as semester, sessions.name as session
                 FROM results
                 JOIN courses ON results.course_id = courses.id
-                JOIN students ON results.registration_number = students.registration_number
+                JOIN students ON results.mat_no = students.mat_no
                 JOIN sessions ON results.session_id = sessions.id
                 JOIN semesters ON results.semester_id = semesters.id
-                WHERE results.registration_number = ?
+                WHERE results.mat_no = ?
                 AND results.session_id = ?
                 AND results.semester_id = ?
                 AND students.level_id = ? 
                 AND results.blocked = 0 `,
-                [registration_number, session, semester, level]
+                [mat_no, session, semester, level]
             );
         } else {
             // Fetch for session only (all semesters)
             [results] = await db.query(
                 `SELECT results.id, results.course_id, courses.code as code, courses.name AS title, students.first_name, 
-                students.last_name, students.registration_number, 
-                results.cat_score + results.exam_score AS total_score, results.grade,
+                students.last_name, students.mat_no, 
+                results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,
                 courses.credit_load as credit, semesters.name as semester, sessions.name as session
                 FROM results
                 JOIN courses ON results.course_id = courses.id
-                JOIN students ON results.registration_number = students.registration_number
+                JOIN students ON results.mat_no = students.mat_no
                 JOIN sessions ON results.session_id = sessions.id
                 JOIN semesters ON results.semester_id = semesters.id
-                WHERE results.registration_number = ?
+                WHERE results.mat_no = ?
                 AND results.session_id = ?
                 AND students.level_id = ? 
                 AND results.blocked = 0 `,
-                [registration_number, session, level]
+                [mat_no, session, level]
             );
         }
         if(results.length === 0) {
@@ -286,12 +287,12 @@ exports.getResultsByDepartment = async (req, res) => {
         const [results] = await db.query(
             `SELECT  results.id, departments.name as department_name, courses.name AS course_name, 
             students.first_name, students.last_name, 
-                    students.registration_number,    
-                    results.cat_score + results.exam_score AS total_score, results.grade,
+                    students.mat_no,    
+                    results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,
                     courses.credit_load
              FROM results
              JOIN courses ON results.course_id = courses.id
-             JOIN students ON results.registration_number = students.registration_number
+             JOIN students ON results.mat_no = students.mat_no
              JOIN departments ON students.department_id = departments.id
              WHERE departments.id = ?`,
             [departmentId]
@@ -307,11 +308,11 @@ exports.getResultsByCourse = async (req, res) => {
         const courseId = req.params.id;
         const [results] = await db.query(
             `SELECT results.id,  courses.name AS course_name, students.first_name, 
-            students.last_name, students.registration_number, results.cat_score, results.exam_score,
-            results.cat_score + results.exam_score AS total_score, results.grade
+            students.last_name, students.mat_no, results.first_quiz, results.second_quiz, results.exam_score,
+            results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade
              FROM results
              JOIN courses ON results.course_id = courses.id
-             JOIN students ON results.registration_number = students.registration_number
+             JOIN students ON results.mat_no = students.mat_no
              WHERE courses.id = ?`,
             [courseId]
         );
@@ -331,12 +332,12 @@ exports.getResultsByDepartmentAndLevel = async (req, res) => {
         const [results] = await db.query(
             `SELECT  results.id, departments.name as department_name, courses.name AS course_name,
             students.first_name, students.last_name, 
-                    students.registration_number, results.cat_score, results.exam_score,
-                    results.cat_score + results.exam_score AS total_score, results.grade,       
+                    students.mat_no, results.first_quiz, results.second_quiz, results.exam_score,
+                    results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,       
                     courses.credit_load
              FROM results
              JOIN courses ON results.course_id = courses.id 
-                JOIN students ON results.registration_number = students.registration_number
+                JOIN students ON results.mat_no = students.mat_no
                 JOIN departments ON students.department_id = departments.id
                 WHERE departments.id = ? AND students.level_id = ?`,
             [deptId, levelId]
@@ -353,9 +354,9 @@ exports.getResultsByDepartmentAndLevel = async (req, res) => {
 
 //block a student's result
 exports.blockResult = async (req, res) => {
-    const registration_number = parseInt(req.params.registration_number);
+    const mat_no = parseInt(req.params.mat_no);
     try {
-        const blocked = await Result.blockUnblockResult(registration_number);
+        const blocked = await Result.blockUnblockResult(mat_no);
         if (!blocked) {
             return res.status(404).json({ success: false, code: 404, message: 'Result not found or already blocked' });
         }
@@ -368,10 +369,10 @@ exports.blockResult = async (req, res) => {
 };
 
 exports.calculateCGPA = async (req, res) => {
-    const registration_number = req.params.registration_number;
+    const mat_no = req.params.mat_no;
     try {
-        const cgpa = await Result.calculateCGPA(registration_number);
-        return res.status(200).json({ success: true, code: 200, registration_number, cgpa });
+        const cgpa = await Result.calculateCGPA(mat_no);
+        return res.status(200).json({ success: true, code: 200, mat_no, cgpa });
     } catch (error) {
         console.log('Error calculating CGPA:', error.message);
         return res.status(500).json({ success: false, code: 500, message: error.message });
@@ -451,7 +452,7 @@ exports.getallResultsforDepartment = async (req, res) => {
         }
         const [results] = await db.query(
             `SELECT 
-                students.registration_number as matric,
+                students.mat_no as matric,
                 CONCAT(students.first_name, ' ', students.last_name) AS student_name,
                 departments.name AS department_name,
                 levels.name AS level_name,
@@ -464,16 +465,17 @@ exports.getallResultsforDepartment = async (req, res) => {
                         'code', courses.code,
                         'name', courses.name,
                         'grade', results.grade,
-                        'cat_score', results.cat_score,
+                        'first_quiz', results.first_quiz,
+                        'second_quiz', results.second_quiz,
                         'exam_score', results.exam_score,
-                        'total_score', results.cat_score + results.exam_score,
+                        'total_score', results.first_quiz + results.second_quiz + results.exam_score,
                         'credit_load', courses.credit_load
                     )
                 ) AS courses_info
             FROM students
             JOIN departments ON students.department_id = departments.id
             JOIN faculties ON departments.faculty_id = faculties.id
-            JOIN results ON students.registration_number = results.registration_number
+            JOIN results ON students.mat_no = results.mat_no
             JOIN courses ON results.course_id = courses.id
             JOIN levels ON courses.level_id = levels.id
             JOIN sessions ON results.session_id = sessions.id
@@ -482,8 +484,8 @@ exports.getallResultsforDepartment = async (req, res) => {
             AND results.session_id = ?
             AND results.semester_id = ?
             AND results.blocked = 0
-            GROUP BY students.registration_number, students.first_name, students.last_name, departments.name, levels.name
-            ORDER BY students.registration_number ASC`,
+            GROUP BY students.mat_no, students.first_name, students.last_name, departments.name, levels.name
+            ORDER BY students.mat_no ASC`,
             [departmentId, session, semester]
         );
         return res.status(200).json({success: true, code: 200, results});

@@ -7,7 +7,7 @@ class Student {
   }
   static async findByUsername(username) {
     const [rows] = await db.query(
-      `SELECT * FROM students WHERE LOWER(registration_number) = ? or email = ?`,
+      `SELECT * FROM students WHERE LOWER(mat_no) = ? or email = ?`,
       [username.toLowerCase(), username]
     );
     return rows[0];
@@ -15,7 +15,7 @@ class Student {
   static async findById(id) {
      const [rows] = await db.query(`
       SELECT concat(first_name, ' ', last_name) as fullName, 
-      email, username, registration_number as matric, phone,
+      email, username, mat_no as matric, phone,
       IF(blocked, 'true', 'false') AS blocked,
       departments.name as department, photo,
       levels.name as level,
@@ -30,7 +30,7 @@ class Student {
   static async findByIdPass(id) {
     const [rows] = await db.query(`
       SELECT students.id, concat(first_name, ' ', last_name) as fullName, 
-      email, username, registration_number as matric, password,
+      email, username, mat_no as matric, password,
       IF(blocked, 'true', 'false') AS blocked,
       departments.name as department,
       levels.name as level,

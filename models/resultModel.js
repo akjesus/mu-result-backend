@@ -11,8 +11,8 @@ class Result {
     if (totalScore >= 40) return 'E'; // 1.0
     return 'F'; // 0.0
   }
-  static async findByStudentAndCourse(registration_number, course_id) {
-    return db.query("SELECT * FROM results WHERE registration_number = ? AND course_id = ?", [registration_number, course_id]);
+  static async findByStudentAndCourse(mat_no, course_id) {
+    return db.query("SELECT * FROM results WHERE mat_no = ? AND course_id = ?", [mat_no, course_id]);
   }
   static async execute(query, params) {
       return db.query(query, params);
@@ -22,15 +22,15 @@ class Result {
     return rows.length ? rows[0] : null;
   }
   
-  static async createResult(registration_number, course_id, cat_score, exam_score, session_id, semester_id) {
-      const totalScore = Number(cat_score) + Number(exam_score);
+  static async createResult(mat_no, course_id, first_quiz, second_quiz, exam_score, session_id, semester_id) {
+      const totalScore = Number(first_quiz) + Number(second_quiz) + Number(exam_score);
       const grade = Result.calculateGrade(totalScore);
       try {
         const [result] = await db.query(
           `INSERT INTO results
-          (registration_number, course_id, cat_score, exam_score, session_id, semester_id, grade, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-          [registration_number, course_id, cat_score, exam_score, session_id, semester_id, grade]
+          (mat_no, course_id, first_quiz, second_quiz, exam_score, session_id, semester_id, grade, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [mat_no, course_id, first_quiz, second_quiz, exam_score, session_id, semester_id, grade]
       );
       return result.insertId;
       }
@@ -42,17 +42,17 @@ class Result {
       
     }
     
-  static async getResultsByStudentId(registration_number) {
-    const [rows] = await db.query("SELECT * FROM results WHERE registration_number = ?", [registration_number]);
+  static async getResultsByStudentId(mat_no) {
+    const [rows] = await db.query("SELECT * FROM results WHERE mat_no = ?", [mat_no]);
     return rows;
   }
-  
-  static async updateResult(cat_score, exam_score, grade, id) {
+
+  static async updateResult(first_quiz, second_quiz, exam_score, grade, id) {
     const [result] = await db.query(
       `UPDATE results 
-       SET cat_score = ?, exam_score = ?, grade = ?
+       SET first_quiz = ?, second_quiz = ?, exam_score = ?, grade = ?
        WHERE id = ?`,    
-            [cat_score, exam_score, grade, id]
+            [first_quiz, second_quiz, exam_score, grade, id]
     );
     return result.affectedRows > 0;
   }
@@ -82,12 +82,13 @@ class Result {
   //bulk upload results by course id
   static async bulkUploadResults(results) {
       const values = results.map(result => {
-        const totalScore = Number(result.cat_score) + Number(result.exam_score);
+        const totalScore = Number(result.first_quiz) + Number(result.second_quiz) + Number(result.exam_score);
         const grade = Result.calculateGrade(totalScore);
         return [
-          result.registration_number,
+          result.mat_no,
           result.course_id,
-          result.cat_score,
+          result.first_quiz,
+          result.second_quiz,
           result.exam_score,
           result.semester_id,
           result.session_id,
@@ -99,7 +100,7 @@ class Result {
       try {
         const [res] = await db.query(
         `INSERT INTO results 
-        (registration_number, course_id, cat_score, exam_score, semester_id, session_id, grade, created_at, updated_at)  
+        (mat_no, course_id, first_quiz, second_quiz, exam_score, semester_id, session_id, grade, created_at, updated_at)  
            VALUES ?`,
           [values]
       );
@@ -111,18 +112,18 @@ class Result {
       }
       
     }
-  static async blockUnblockResult(registration_number) {
+  static async blockUnblockResult(mat_no) {
         const [result] = await db.query(
           `UPDATE results SET blocked = NOT blocked WHERE id = ?`,
-          [registration_number]  
+          [mat_no]  
         );
         return result.affectedRows > 0;
       }
 //function to calculate CGPA for all students
-  static async calculateCGPA(registration_number) {
+  static async calculateCGPA(mat_no) {
     const [rows] = await db.query(`
       SELECT
-        r.registration_number,
+        r.mat_no,
         SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -148,9 +149,9 @@ class Result {
         ) / SUM(c.credit_load)) AS cgpa
       FROM results r
       JOIN courses c ON r.course_id = c.id
-      WHERE r.registration_number = ?
-      GROUP BY r.registration_number
-    `, [registration_number]);
+      WHERE r.mat_no = ?
+      GROUP BY r.mat_no
+    `, [mat_no]);
     return rows.length ? rows[0] : null;
   }
   //function to calculate average CGPA for all students in a department
@@ -160,7 +161,7 @@ class Result {
         AVG(sub.cgpa) AS average_cgpa
       FROM (
         SELECT
-          r.registration_number,
+          r.mat_no,
           (SUM(
             CASE r.grade
               WHEN 'A' THEN 5.0
@@ -175,7 +176,7 @@ class Result {
         FROM results r
         JOIN courses c ON r.course_id = c.id
         WHERE c.department_id = ?
-        GROUP BY r.registration_number
+        GROUP BY r.mat_no
       ) AS sub
     `, [departmentId]);
     return rows.length ? rows[0].average_cgpa : null;
@@ -184,7 +185,7 @@ class Result {
   static async calculateAllCGPA() {
     const [rows] = await db.query(`
       SELECT
-        r.registration_number,
+        r.mat_no,
         SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -210,7 +211,7 @@ class Result {
         ) / SUM(c.credit_load)) AS cgpa
       FROM results r
       JOIN courses c ON r.course_id = c.id
-      GROUP BY r.registration_number
+      GROUP BY r.mat_no
     `);
     return rows;
   }
@@ -218,7 +219,7 @@ class Result {
   static async getHighestandLowestCGPA() {
     const [rows] = await db.query(`
       SELECT
-        r.registration_number, s.first_name, s.last_name, d.name AS department,
+        r.mat_no, s.first_name, s.last_name, d.name AS department,
         (SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -231,17 +232,17 @@ class Result {
           END * c.credit_load
         ) / SUM(c.credit_load)) AS cgpa
       FROM results r
-      JOIN students s ON r.registration_number = s.registration_number
+      JOIN students s ON r.mat_no = s.mat_no
       JOIN departments d ON s.department_id = d.id
       JOIN courses c ON r.course_id = c.id
-      GROUP BY r.registration_number, s.first_name, s.last_name, department
+      GROUP BY r.mat_no, s.first_name, s.last_name, department
       ORDER BY cgpa DESC
       LIMIT 1
     `);
     const highestCGPA = rows.length ? rows[0] : null;
     const [lowRows] = await db.query(`
       SELECT
-        r.registration_number,  s.first_name, s.last_name, d.name AS department,
+        r.mat_no,  s.first_name, s.last_name, d.name AS department,
         (SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -254,10 +255,10 @@ class Result {
           END * c.credit_load
         ) / SUM(c.credit_load)) AS cgpa
       FROM results r
-      JOIN students s ON r.registration_number = s.registration_number
+      JOIN students s ON r.mat_no = s.mat_no
       JOIN departments d ON s.department_id = d.id
       JOIN courses c ON r.course_id = c.id
-      GROUP BY r.registration_number, s.first_name, s.last_name, department
+      GROUP BY r.mat_no, s.first_name, s.last_name, department
       ORDER BY cgpa ASC
       LIMIT 1
     `);
@@ -271,7 +272,7 @@ class Result {
         AVG(sub.cgpa) AS average_cgpa
       FROM (
         SELECT
-          r.registration_number,
+          r.mat_no,
           (SUM(
             CASE r.grade
               WHEN 'A' THEN 5.0
@@ -285,13 +286,13 @@ class Result {
           ) / SUM(c.credit_load)) AS cgpa
         FROM results r
         JOIN courses c ON r.course_id = c.id
-        GROUP BY r.registration_number
+        GROUP BY r.mat_no
       ) AS sub
     `);
     return rows.length ? rows[0].average_cgpa : null;
   }
   //calculate current GPA for a student in the latest semester
-  static async calculateCurrentGPA(registration_number, semester_id) {
+  static async calculateCurrentGPA(mat_no, semester_id) {
     // Get GPA performance by semester
     const [performanceRows] = await db.query(`
       SELECT s.name AS semester_name, l.name AS level_name, c.semester_id,
@@ -310,22 +311,22 @@ class Result {
       JOIN courses c ON r.course_id = c.id
       JOIN semesters s ON c.semester_id = s.id
       JOIN levels l ON c.level_id = l.id
-      WHERE r.registration_number = ?
+      WHERE r.mat_no = ?
       GROUP BY c.semester_id, s.name, l.name
       ORDER BY c.semester_id ASC
-    `, [registration_number]);
+    `, [mat_no]);
 
   // Get total courses taken (all semesters)
-  const [allCoursesRows] = await db.query(`SELECT id FROM results WHERE registration_number = ?`, [registration_number]);
+  const [allCoursesRows] = await db.query(`SELECT id FROM results WHERE mat_no = ?`, [mat_no]);
   const totalCourses = allCoursesRows.length;
 
   // Get total courses failed (current semester)
-  const [failedCoursesRows] = await db.query(`SELECT id FROM results WHERE registration_number = ? AND semester_id = ? AND grade = 'F'`, [registration_number, semester_id]);
+  const [failedCoursesRows] = await db.query(`SELECT id FROM results WHERE mat_no = ? AND semester_id = ? AND grade = 'F'`, [mat_no, semester_id]);
   const totalFailed = failedCoursesRows.length;
     // Calculate GPA for the semester
     const [rows] = await db.query(`
       SELECT
-        r.registration_number,
+        r.mat_no,
         SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -351,13 +352,13 @@ class Result {
         ) / SUM(c.credit_load)) AS gpa
       FROM results r
       JOIN courses c ON r.course_id = c.id
-      WHERE r.registration_number = ? AND r.semester_id = ?
-    `, [registration_number, semester_id]);
+      WHERE r.mat_no = ? AND r.semester_id = ?
+    `, [mat_no, semester_id]);
 
     // Calculate CGPA for the student (all semesters)
     const [cgpaRows] = await db.query(`
       SELECT
-        r.registration_number,
+        r.mat_no,
         SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -383,8 +384,8 @@ class Result {
         ) / SUM(c.credit_load)) AS cgpa
       FROM results r
       JOIN courses c ON r.course_id = c.id
-      WHERE r.registration_number = ?
-    `, [registration_number]);
+      WHERE r.mat_no = ?
+    `, [mat_no]);
 
     // Always return CGPA, total courses, and performance, even if no results in active semester
     return {

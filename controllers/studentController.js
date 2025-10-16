@@ -15,7 +15,7 @@ exports.getAllStudents = async (req, res) => {
   try {
     const offset = (page - 1) * limit;
     let query = `SELECT  first_name, last_name, 
-    email, registration_number as matric, username,
+    email, mat_no as matric, username,
     departments.name AS department, levels.name AS level,
     faculties.name AS school 
     FROM students
@@ -203,7 +203,7 @@ exports.bulkUploadStudents = async (req, res) => {
         const {
           department_id,
           level_id,
-          registration_number,
+          mat_no,
           first_name,
           last_name,
           email,
@@ -216,7 +216,7 @@ exports.bulkUploadStudents = async (req, res) => {
         studentsToImsert.push({
           department_id,
           level_id,
-          registration_number,
+          mat_no,
           first_name,
           last_name,
           email,
@@ -240,13 +240,13 @@ exports.bulkUploadStudents = async (req, res) => {
 
             const [insertRes] = await db.query(
               `INSERT INTO students 
-               (department_id, level_id, registration_number, first_name, last_name, email, username,
+               (department_id, level_id, mat_no, first_name, last_name, email, username,
                 password, photo, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
               [
                 qRow.department_id,
                 qRow.level_id,
-                qRow.registration_number,
+                qRow.mat_no,
                 qRow.first_name,
                 qRow.last_name,
                 qRow.email,
@@ -271,21 +271,21 @@ exports.bulkUploadStudents = async (req, res) => {
 exports.bulkDownloadStudents = async (req, res) => {
   try {
     const [students] = await Student.execute(`
-      SELECT registration_number as RegitrationNumber, concat(first_name,' ', last_name) as Fullname, 
+      SELECT mat_no as MatricNumber, concat(first_name,' ', last_name) as Fullname, 
       email as Email, departments.name as Department, levels.name As Level, 
       faculties.name as Faculty
       FROM students
       JOIN departments ON students.department_id = departments.id
       JOIN levels ON students.level_id = levels.id
       JOIN faculties ON departments.faculty_id = faculties.id
-      ORDER BY students.registration_number DESC
+      ORDER BY students.mat_no DESC
     `);
     if (!students.length) {
       return res.status(404).json({ error: "No students found" });
     }
     // Convert to CSV format
     const csvHeaders = [
-      "RegitrationNumber",
+      "MatricNumber",
       "Fullname",
       "Email",
       "Department",
@@ -353,7 +353,7 @@ exports.getStudentsByDepartment = async (req, res) => {
   try {
     let query = `
       SELECT students.id as id, concat(first_name, ' ', last_name) as name,
-      first_name, last_name, registration_number as matric,
+      first_name, last_name, mat_no as matric,
       email, departments.name as department,
       faculties.name as school
       FROM students
