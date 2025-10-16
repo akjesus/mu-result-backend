@@ -43,11 +43,11 @@ class Student {
       return rows.length ? rows[0] : null;
 
   }
-    static async createStudent(firstName, lastName, email, username, password) {    
+    static async createStudent(department, level, first_name, last_name, email, matric, username, password) {
     const [result] = await db.query(
-      `INSERT INTO students (first_name, last_name, email, username, password, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      [firstName, lastName, email, username, password]
+      `INSERT INTO students (department_id, level_id, first_name, last_name, email, mat_no, username, password, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [department, level, first_name, last_name, email, matric, username, password]
     );
     return result.insertId;
   }
@@ -72,12 +72,18 @@ class Student {
       where id = ?`, [password, user]);
       return result.affectedRows > 0;
   }
-
   static async resetAllPasswords(newPassword) {
     const [result] = await db.query(`
       UPDATE students
       set password = ?`, [newPassword]);
       return result.affectedRows;
   }
+  static async findByMatNo(mat_no) {
+    const [rows] = await db.query(
+      `SELECT * FROM students WHERE LOWER(mat_no) = ?`,
+      [mat_no.toLowerCase()]
+    );
+    return rows[0];
+  } 
 }
 module.exports = Student;

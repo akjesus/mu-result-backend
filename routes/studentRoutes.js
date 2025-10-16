@@ -6,22 +6,13 @@ const studentController = require("../controllers/studentController");
 const {getResultsByStudent, getAllResultsForStudent, getCurrentGPA} = require("../controllers/resultController");
 const { changeStudentPassword } = require("../controllers/authController");
 
-const multer = require('multer');
-const storage = multer.diskStorage({
-	destination: function (req, file, cb) {
-		cb(null, 'uploads/');
-	},
-	filename: function (req, file, cb) {
-		cb(null, file.originalname);
-	}
-});
-const upload = multer({ storage });
-
+const multer = require("multer")
+const upload = multer()
 
 router.use(verifyToken);
 router.use(restrictTo("superadmin", "admin", "staff", "student"));
 router.get("/profile", studentController.getMyProfile);
-router.post("/update-picture", upload.single('profilePic'), studentController.updateProfilePicture);
+router.post("/update-picture", upload.single("file"), studentController.updateProfilePicture);
 router.get("/result", getResultsByStudent);
 router.get("/gpa", getCurrentGPA);
 router.get("/all-results", getAllResultsForStudent);
@@ -30,7 +21,7 @@ router.post("/change-password", changeStudentPassword);
 
 router.use(restrictTo("admin", "staff", "superadmin"));
 router.get('/departments', studentController.getStudentsByDepartment);
-router.post("/bulk-upload", studentController.bulkUploadStudents);
+router.post("/bulk-upload", upload.single("file"), studentController.bulkUploadStudents);
 router.get("/bulk-download", studentController.bulkDownloadStudents);
 router.get("/", studentController.getAllStudents);
 router.post("/",  studentController.createStudent);

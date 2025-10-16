@@ -5,7 +5,7 @@ const stream = require('stream');
 const db = require("../config/database");
 const SERVER_URL = process.env.DATABASE_SERVER
 
-//get all users from the sql database and paginate the results
+
 
 exports.getAllStudents = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -17,7 +17,7 @@ exports.getAllStudents = async (req, res) => {
     let query = `SELECT  first_name, last_name, 
     email, mat_no as matric, username,
     departments.name AS department, levels.name AS level,
-    faculties.name AS school 
+    faculties.name AS school, faculties.id AS schoolId
     FROM students
     JOIN departments ON students.department_id = departments.id
     JOIN levels ON students.level_id = levels.id
@@ -79,13 +79,12 @@ exports.getUserById = async (req, res) => {
     }
 };
 
-
 exports.createStudent = async (req, res) => {
     try {
-         
-      const { firstName, lastName, email, username, password, department, level } = req.body;
-       
-      if (!firstName || !lastName || !email || !username || !password || department || level) {
+
+      const { department, level, first_name, last_name, email, username, matric } = req.body;
+
+      if (!department || !level || !first_name || !last_name || !email || !username || !matric) {
         return res.status(400).json({ success: false, code: 400, message: "All fields are required!" });
       }
 
@@ -93,12 +92,14 @@ exports.createStudent = async (req, res) => {
         if(existing) {
           return res.status(409).json({success: false, code: 409, message: "Email exists already" })
         }
-        const studentId = await Student.createStudent(firstName, lastName, email, username, password, department, level);
+        const password = await bcrypt.hash("password", 10);
+        const studentId = await Student.createStudent(department, level, first_name, last_name, email, matric, username, password);
         return res.status(201).json({ success: true, code: 201, message:  "Student created successfully", id: studentId });
     
 
     } catch (err) {
-      res.status(500).json({ success: false, code: 500, message:  err.message });
+      console.log('Error creating student:', err);
+      return res.status(500).json({ success: false, code: 500, message:  err.message });
     }
   };
 
@@ -182,89 +183,70 @@ exports.blockUser = async (req, res) => {
 };
 
 exports.bulkUploadStudents = async (req, res) => {
-  try {
-    // Check if file is present
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ error: "CSV file is required" });
-    }
-
-    const csvFile = req.files.file;
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(csvFile.data);
-
-    const studentsToImsert = []; // for student fields
-    // We'll store them as arrays of [course_id, level_id, ... user_id], then link after
-
-    bufferStream
-      .pipe(csvParser())
-      .on("data", (row) => {
-        // Extract the fields from CSV row
-        // We'll parse them carefully, assuming columns are consistent
-        const {
-          department_id,
-          level_id,
-          mat_no,
-          first_name,
-          last_name,
-          email,
-          username,
-          password,
-          photo,
-        } = row;
-
-        // We'll store this row data
-        studentsToImsert.push({
-          department_id,
-          level_id,
-          mat_no,
-          first_name,
-          last_name,
-          email,
-          username,
-          password,
-          photo,
-        });
-      })
-      .on("end", async () => {
-        if (!studentsToImsert.length) {
-          return res
-            .status(400)
-            .json({ error: "No valid student data found in CSV" });
-        }
-
-        let insertedCount = 0;
-
-        // We'll process each question row individually
-        for (const qRow of studentsToImsert) {
-          // Insert new question
-
-            const [insertRes] = await db.query(
-              `INSERT INTO students 
-               (department_id, level_id, mat_no, first_name, last_name, email, username,
-                password, photo, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-              [
-                qRow.department_id,
-                qRow.level_id,
-                qRow.mat_no,
-                qRow.first_name,
-                qRow.last_name,
-                qRow.email,
-                qRow.username,
-                qRow.password,
-                qRow.photo,
-              ]
-            );
-            insertedCount++;
-
-        }
-        res.status(201).json({
-          message: `${insertedCount} students successfully uploaded`,
-        });
-      });
-  } catch (err) {
-    res.status(500).json({ success: false, code: 500, error: err.message });
-  }
+ try {
+         if (!req.file) {
+             return res.status(400).json({ success: false, code: 400, message: "No file uploaded!" });
+         }
+         const studentsFile = req.file;
+         const fileExtension = studentsFile.originalname.split('.').pop().toLowerCase();
+         if (fileExtension !== 'csv') {
+             return res.status(400).json({ success: false, code: 400, message: "Only CSV files are allowed!" });
+         }
+          const password = await bcrypt.hash("password", 10);
+         const csv = require('csv-parser');
+         const stream = require('stream');
+         const students = [];
+         const readableStream = new stream.Readable();
+         readableStream._read = () => {};
+         readableStream.push(studentsFile.buffer);
+         readableStream.push(null);
+         readableStream.pipe(csv())
+         .on('data', (data) => students.push(data))
+         .on('end', async () => {
+             let insertedCount = 0;
+             let errorCount = 0;
+             let errorRows = [];
+             for (const s of students) {
+                const mat_no = s.mat_no
+                 // Check for duplicate
+                 try {
+                      const existing = await Student.findByMatNo(mat_no);
+                      if (existing) {
+                          console.log(`Duplicate found for ${mat_no}, skipping.`);
+                          continue; // Skip duplicates
+                      }
+                     await Student.createStudent(
+                      s.department_id,
+                      s.level_id,
+                      s.first_name,
+                      s.last_name,
+                      s.email,
+                      s.mat_no,
+                      s.username,
+                      password
+                     );
+                     insertedCount++;
+                 } catch (error) {
+                     errorCount++;
+                     errorRows.push({ row: s, error: error.message });
+                     console.log(`Error inserting row for ${mat_no}:`, error.message);
+                     continue;
+                 }
+             }
+             console.log(`Bulk upload finished: ${insertedCount} inserted, ${errorCount} errors.`);
+             if (errorCount > 0) {
+                 return res.status(200).json({success: true, code: 200, message: `${insertedCount} students uploaded, ${errorCount} errors (see server logs for details)`, errors: errorRows });
+             }
+             return res.status(200).json({success: true, code: 200, message: `${insertedCount} students uploaded successfully (duplicates skipped)` });
+         })
+         .on('error', (err) => {
+             console.log('Error parsing CSV:', err.message);
+             return res.status(500).json({success: false, code: 500, message: "Error parsing CSV file" });
+         });
+     } catch (error) {
+         console.log('Error uploading student:', error.message);
+         return res.status(500).json({success: false, code: 500, message: error.message });
+     }
 };
 
 
@@ -353,9 +335,9 @@ exports.getStudentsByDepartment = async (req, res) => {
   try {
     let query = `
       SELECT students.id as id, concat(first_name, ' ', last_name) as name,
-      first_name, last_name, mat_no as matric,
-      email, departments.name as department,
-      faculties.name as school
+      first_name, last_name, mat_no as matric, username,
+      email, departments.name as department, departments.id as departmentId,
+      faculties.name as school, faculties.id as schoolId
       FROM students
       JOIN departments ON students.department_id = departments.id
       JOIN faculties ON departments.faculty_id = faculties.id
