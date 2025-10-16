@@ -141,9 +141,6 @@ exports.deleteResult = async (req, res) => {
 
 //bulk upload results
 exports.bulkUploadResults = async (req, res) => {
-    console.log('bulkUploadResults route called');
-    console.log('req.file:', req.file);
-    console.log('req.body:', req.body);
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, code: 400, message: "No file uploaded!" });
@@ -184,7 +181,7 @@ exports.bulkUploadResults = async (req, res) => {
                         console.log(`Duplicate found for ${mat_no}, skipping.`);
                         continue;
                     }
-                    const result = await Result.createResult(
+                    await Result.createResult(
                         mat_no,
                         course_id,
                         parseFloat(r.first_quiz),
@@ -193,7 +190,6 @@ exports.bulkUploadResults = async (req, res) => {
                         session_id,
                         semester_id
                     );
-                    console.log(`Inserted result for ${mat_no}:`, result);
                     insertedCount++;
                 } catch (error) {
                     errorCount++;
@@ -514,8 +510,8 @@ exports.batchUpdateResults = async (req, res) => {
     try {
         let updatedCount = 0;
         for (const update of updates) {
-            const { id, cat_score, exam_score, grade } = update;
-            const updated = await Result.updateResult(cat_score, exam_score, grade, id);   
+            const { id, first_quiz, second_quiz, exam_score, grade } = update;
+            const updated = await Result.updateResult(first_quiz, second_quiz, exam_score, grade, id);
             if (updated) updatedCount++;
         }
         return res.status(200).json({ success: true, code: 200, message: `${updatedCount} results updated successfully` });
