@@ -60,7 +60,6 @@ exports.getCourseById = async (req, res) => {
 };
 // Create a new course
 exports.createCourse = async (req, res) => {
-    console.log('Request body:', req.body);
     const { 
             name,
             code, 
