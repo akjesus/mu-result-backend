@@ -7,8 +7,9 @@ exports.getAllCourses = async (req, res) => {
     const limit = parseInt(req.query.limit) || null;
     const offset = (page - 1) * limit;
     let query = `SELECT courses.id as id, courses.name as title, courses.code, courses.credit_load as credit,
-            IF(courses.active, 'Yes', 'No') AS active,
-            departments.name AS departments, levels.name AS level, semesters.name AS semester
+            courses.active AS active,
+            departments.name AS departments, levels.name AS level, semesters.name AS semester,
+            departments.id AS departmentId, levels.id AS levelId, semesters.id AS semesterId
             FROM courses
             JOIN departments ON courses.department_id = departments.id
             JOIN levels ON courses.level_id = levels.id
@@ -59,6 +60,7 @@ exports.getCourseById = async (req, res) => {
 };
 // Create a new course
 exports.createCourse = async (req, res) => {
+    console.log('Request body:', req.body);
     const { 
             name,
             code, 
