@@ -105,7 +105,8 @@ exports.updateCourse = async (req, res) => {
             semester_id,
             name,
             code, 
-            credit_load} = req.body;
+            credit_load, 
+            active} = req.body;
     try {
         const [courses] = await db.query(`SELECT * FROM courses WHERE id = ?`, [courseId]);
         if (!courses || courses.length === 0) {
@@ -118,7 +119,8 @@ exports.updateCourse = async (req, res) => {
             semester_id,
             name,
             code, 
-            credit_load);
+            credit_load,
+            active);
         if (!updated) {
             return res.status(500).json({ success: false, code: 500, message: 'Failed to update course' });
         }

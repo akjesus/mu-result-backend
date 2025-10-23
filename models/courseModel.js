@@ -44,12 +44,13 @@ class Course {
             semester_id,
             name,
             code, 
-            credit_load) 
+            credit_load,
+            active)
             {
     const [result] = await db.query(
       `UPDATE courses 
        SET name = ?, code = ?, department_id = ?, level_id = ?, 
-       semester_id = ?, credit_load = ? WHERE id = ?`,
+       semester_id = ?, credit_load = ?, active = ? WHERE id = ?`,
             [
             name,
             code, 
@@ -57,6 +58,7 @@ class Course {
             level_id,
             semester_id,
             credit_load,
+            active,
             courseId]
     );
     return result.affectedRows > 0;

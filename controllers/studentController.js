@@ -336,10 +336,11 @@ exports.getStudentsByDepartment = async (req, res) => {
       SELECT students.id as id, concat(first_name, ' ', last_name) as name,
       first_name, last_name, mat_no as matric, username,
       email, departments.name as department, departments.id as departmentId,
-      faculties.name as school, faculties.id as schoolId
+      faculties.name as school, faculties.id as schoolId, levels.name as level, levels.id as levelId
       FROM students
       JOIN departments ON students.department_id = departments.id
       JOIN faculties ON departments.faculty_id = faculties.id
+      JOIN levels ON students.level_id = levels.id
       WHERE department_id = ?`;
     const params = [departmentId];
     if (levelId) {
