@@ -45,9 +45,9 @@ class Student {
   }
     static async createStudent(department, level, first_name, last_name, email, matric, username, password) {
     const [result] = await db.query(
-      `INSERT INTO students (department_id, level_id, first_name, last_name, email, mat_no, username, password, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [department, level, first_name, last_name, email, matric, username, password]
+      `INSERT INTO students (department_id, level_id, first_name, last_name, email, mat_no, username, password, created_at, updated_at, role, blocked)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
+      [department, level, first_name, last_name, email, matric, username, password, 'student', 0]
     );
     return result.insertId;
   }
