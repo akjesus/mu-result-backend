@@ -214,6 +214,57 @@ exports.bulkUploadResults = async (req, res) => {
     }
 };
 
+exports.bulkUploadBlocklist = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, code: 400, message: "No file uploaded!" });
+        }
+        const blockListFile = req.file;
+        const fileExtension = blockListFile.originalname.split('.').pop().toLowerCase();
+        if (fileExtension !== 'csv') {
+            return res.status(400).json({ success: false, code: 400, message: "Only CSV files are allowed!" });
+        }
+
+        const csv = require('csv-parser');
+        const stream = require('stream');
+        const blockList = [];
+        const readableStream = new stream.Readable();
+        readableStream._read = () => {};
+        readableStream.push(blockListFile.buffer);
+        readableStream.push(null);
+        readableStream.pipe(csv())
+        .on('data', (data) => blockList.push(data))
+        .on('end', async () => {
+            let blockCount = 0;
+            let errorCount = 0;
+            let errorRows = [];
+            for (const r of blockList) {
+                const mat_no = r.mat_no;
+                try {
+                    await Student.blockStudent(mat_no);
+                    blockCount++;
+                } catch (error) {
+                    errorCount++;
+                    errorRows.push({ row: r, error: error.message });
+                    console.log(`Error blocking student ${mat_no}:`, error.message);
+                    continue;
+                }
+            }
+            console.log(`Bulk blocking finished: ${blockCount} blocked, ${errorCount} errors.`);
+            if (errorCount > 0) {
+                return res.status(200).json({success: true, code: 200, message: `${blockCount} results blocked, ${errorCount} errors (see server logs for details)`, errors: errorRows });
+            }
+            return res.status(200).json({success: true, code: 200, message: `${blockCount} students blocked successfully` });
+        })
+        .on('error', (err) => {
+            console.log('Error parsing CSV:', err.message);
+            return res.status(500).json({success: false, code: 500, message: "Error parsing CSV file" });
+        });
+    } catch (error) {
+        console.log('Error blocking students:', error.message);
+        return res.status(500).json({success: false, code: 500, message: error.message });
+    }
+};
 
 exports.getResultsByStudent = async (req, res) => {
     const user = req.user;
@@ -227,6 +278,10 @@ exports.getResultsByStudent = async (req, res) => {
         const { session, level, semester } = req.query;
         if (!session || !level) {
             return res.status(400).json({ success: false, code: 400, message: "Session and Level are required!" });
+        }
+        //return if student is blocked
+        if(userDetails.blocked === "true") {
+            return res.status(403).json({ success: false, code: 403, message: "Your results are blocked. Please contact the administration." });
         }
         let results;
         if (semester) {
@@ -245,7 +300,7 @@ exports.getResultsByStudent = async (req, res) => {
                 AND results.session_id = ?
                 AND results.semester_id = ?
                 AND students.level_id = ? 
-                AND results.blocked = 0 `,
+                AND students.blocked = 0 `,
                 [mat_no, session, semester, level]
             );
         } else {
@@ -263,7 +318,7 @@ exports.getResultsByStudent = async (req, res) => {
                 WHERE results.mat_no = ?
                 AND results.session_id = ?
                 AND students.level_id = ? 
-                AND results.blocked = 0 `,
+                AND students.blocked = 0 `,
                 [mat_no, session, level]
             );
         }
@@ -450,6 +505,8 @@ exports.getallResultsforDepartment = async (req, res) => {
             `SELECT 
                 students.mat_no as matric,
                 CONCAT(students.first_name, ' ', students.last_name) AS student_name,
+                students.blocked AS isBlocked,
+                students.id AS studentId,
                 departments.name AS department_name,
                 levels.name AS level_name,
                 sessions.name AS session_name,
@@ -479,8 +536,7 @@ exports.getallResultsforDepartment = async (req, res) => {
             WHERE departments.id = ?
             AND results.session_id = ?
             AND results.semester_id = ?
-            AND results.blocked = 0
-            GROUP BY students.mat_no, students.first_name, students.last_name, departments.name, levels.name
+            GROUP BY students.mat_no, students.first_name, students.last_name, students.blocked, students.id, departments.name, levels.name
             ORDER BY students.mat_no ASC`,
             [departmentId, session, semester]
         );

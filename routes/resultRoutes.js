@@ -24,10 +24,10 @@ router.get("/:id",  resultController.getResultById);
 
 router.use(restrictTo("superadmin", "admin"));
 
-
 router.post("/", resultController.createResult);
 router.put("/batch-update", resultController.batchUpdateResults);
 router.post("/bulk-upload", upload.single("file"), resultController.bulkUploadResults);
+router.post("/upload-blocklist", upload.single("file"), resultController.bulkUploadBlocklist);
 router.put("/:id", resultController.updateResult);
 
 router.use(restrictTo("superadmin"));

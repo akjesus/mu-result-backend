@@ -165,14 +165,15 @@ exports.updateStudent = async (req, res) => {
     }
 };
 
-exports.blockUser = async (req, res) => {
+exports.blockUnblockStudent = async (req, res) => {
     const userId = parseInt(req.params.id);
+    const { isBlocked } = req.body; // Expecting a boolean value
     try {
         const user = await Student.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, code: 500, message: 'User not found' });
         }
-        await Student.blockUnblockStudent(userId);
+        await Student.blockUnblockStudent(userId, isBlocked);
         const message = user.blocked ? 'User unblocked successfully' : 'User blocked successfully';
         return res.status(200).json({ success: true, code: 200,  message });
     } catch (error) {

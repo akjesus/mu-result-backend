@@ -29,12 +29,15 @@ router.get("/:id", studentController.getUserById);
 
 router.use(restrictTo("admin", "superadmin"));
 router.post("/:id/reset-password", studentController.resetPassword);
+router.put("/:id/block-unblock",  studentController.blockUnblockStudent);
 router.put("/:id",  studentController.updateStudent);
 
+
 router.use(restrictTo("superadmin"));
-router.delete("/:id",  studentController.deleteUser);
-router.post("/:id/block",  studentController.blockUser);
 router.post("/reset-all-passwords", studentController.resetAllPasswords);
+router.delete("/:id",  studentController.deleteUser);
+
+
 
 
 module.exports = router;

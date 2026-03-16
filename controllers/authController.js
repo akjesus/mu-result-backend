@@ -3,54 +3,55 @@ const Staff = require("../models/staffModel");
 const Student = require("../models/studentModel");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const Email = require("../utils/emailService");
 
-let blacklistedTokens = new Set(); // Store invalid tokens (only works for in-memory)
-
-const JWT_SECRET = process.env.JWT_SECRET; // Store in env file
+let blacklistedTokens = new Set();
+const JWT_SECRET = process.env.JWT_SECRET;
 
 exports.login = async (req, res) => {
   let user;
-    try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(400).json({ success: false, code: 400, message: "Email and password are required" });
-      }
-      user = await Staff.findByUsername(email) || await Student.findByUsername(email);
-        if (!user) {
-        return res.status(401).json({ success: false, code: 401, message: "Invalid Username" });
-          }
-          if (!user.password) {
-          return res.status(500).json({ success: false, code: 500, message: "User record is corrupted. No password found." });
-          }
-      // Verify password against hashed password
-          const passwordMatch = await bcrypt.compare(password, user.password);
-      if (!passwordMatch) {
-        const rawPassword = user.password === password? true : false;
-        if (!rawPassword) {
-        return res.status(401).json({ success: false, code: 401, message: "Invalid Password" });
-        }}
-      // Generate JWT token
-      const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "24h" });
-      res.status(200).json({ 
-        success: true,
-        code: 200,
-        role: user.role,
-        message: "Login successful, navigating to Dashboard",
-        token,
-        user: {
-          name: user.first_name,
-          email: user.email,
-          username: user.username,
-        }
-      });
-
-    } catch (err) {
-      console.log("Login error:", err);
-      res.status(500).json({ success: false, code: 500, message: err.message });
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, code: 400, message: "Email and password are required" });
     }
-  };
 
-  //create admin 
+    user = await Staff.findByUsername(email) || await Student.findByUsername(email);
+    if (!user) {
+      return res.status(401).json({ success: false, code: 401, message: "Invalid Username" });
+    }
+
+    if (!user.password) {
+      return res.status(500).json({ success: false, code: 500, message: "User record is corrupted. No password found." });
+    }
+
+    // Verify password against hashed password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ success: false, code: 401, message: "Invalid Password" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "24h" });
+    res.status(200).json({ 
+      success: true,
+      code: 200,
+      role: user.role,
+      message: "Login successful, navigating to Dashboard",
+      token,
+      user: {
+        name: user.first_name,
+        email: user.email,
+        username: user.username,
+      }
+    });
+  } catch (err) {
+    console.log("Login error:", err);
+    res.status(500).json({ success: false, code: 500, message: err.message });
+  }
+};
+
+//create admin 
 exports.createAdmin = async (req, res) => {
     try {
       const { first_name, last_name, email, username, password } = req.body;
@@ -71,7 +72,6 @@ exports.createAdmin = async (req, res) => {
       res.status(500).json({ success: false, code: 500, message: err.message });
     }
   };
-
 
 exports.studentLogin = async (req, res) => {
     try {
@@ -148,7 +148,6 @@ exports.refreshToken = (req, res) => {
     });
   };
 
-
 exports.getMe = async (req, res) => {
   let user;
   try {
@@ -172,7 +171,6 @@ exports.getMe = async (req, res) => {
     
   };  
 
-
 exports.restrictTo =  (...roles) =>  (req, res, next) => {
     if (!roles.includes(req.user.role)) {
       return res.status(401).json({ success: false, code: 401, message: "Unauthorised, please contact Super Admin!"});
@@ -186,7 +184,7 @@ exports.changeStudentPassword = async (req, res)=> {
     if(!student) {
       return res.status(404).json({success: false, code: 404, message: "No student found"});
     }
-  
+    console.log(student)
     const{old_password, new_password, new_password_confirm} = req.body;
     if(!old_password || !new_password || !new_password_confirm){
       return res.status(400).json({success: false, code: 400, message:"All password fields required"})
@@ -199,7 +197,8 @@ exports.changeStudentPassword = async (req, res)=> {
     if(!passwordMatch){
       return res.status(403).json({success: false, code: 403, message: "Old password is not correct!"});
     }
-  const change =  await Student.changePassword(new_password, student.id)
+  const hash = await bcrypt.hash(new_password, 10);
+  const change =  await Student.changePassword(student.id, hash);
     return res.status(201).json({success: true, code: 201, message: "password changed successfully", changed: change});
   }
   catch(error) {
@@ -208,21 +207,66 @@ exports.changeStudentPassword = async (req, res)=> {
   }
 }
 
-exports.resetPassword = async (req, res)=> {
+exports.forgotPassword = async (req, res) => {
+  
   try {
-      const {user} = req.body;
-  if(!user) return res.status(400).json({success: false, code: 400, message: "No user in request!"});
-  const userExists = await Student.findByUsername(user);
-
-  const password = await bcrypt.hash("password", 10)
-  if(!userExists) return res.status(404).json({success: false, code: 404, message: "User not found!"});
-  const reset = await Student.resetPassword(userExists.id, password);
-  if(!reset)  return res.status(500).json({success: false, code: 500, message: "Password not reset, try again!!"})
-  return res.status(200).json({success: true, code: 200, message: "Password reset successfully!"})
-
+    const { username } = req.body;
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetExpires = Date.now() + 10 * 60 * 1000;
+    const staff = await Staff.findByUsername( username );
+    if (!staff) {
+         const student = await Student.findByUsername( username );
+         if (student) {
+            await Student.resetPassword(student.id, code, resetExpires);
+            const emailInstance = new Email(student, code);
+            await emailInstance.sendReset();
+         } else {
+            return res.status(404).json({ message: 'No user found with that username or email.' });
+         }   
+      return res.status(201).json({ message: 'User found. Reset code sent to email.' });
+    } else {
+            await Staff.resetPassword(staff.id, code, resetExpires);
+            const emailInstance = new Email(staff, code);
+            await emailInstance.sendReset();
+            res.status(200).json({ message: 'Password reset code sent to email!' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'There was an error sending the email. Try again later.' });
   }
-  catch(error) {
-     return res.status(500).json({success: false, code: 500, message: error.message})
-  }
+};
 
-}
+exports.resetPassword = async (req, res) => {
+  
+    try {
+        const {resetCode, newPassword} = req.body;
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const staff = await Staff.findByResetCode(parseInt(resetCode));
+        if (!staff) {
+            const student = await Student.findByResetCode(parseInt(resetCode));
+            if (!student) {
+                return res.status(400).json({ message: 'Invalid or expired reset code.' });
+            }
+            if (student.resetExpires < Date.now()) {
+                return res.status(400).json({ message: 'Reset code has expired.' });
+            }
+            
+            student.password = hashedPassword;
+            await Student.changePassword(student.id, hashedPassword);
+             return res.status(200).json({ message: 'Password has been reset successfully!' });
+
+        }
+        else {
+            if (staff.resetExpires < Date.now()) {
+                return res.status(400).json({ message: 'Reset code has expired.' });
+            }   
+            await Staff.updatePassword(staff.id, hashedPassword);
+            return res.status(200).json({ message: 'Password has been reset successfully!' });
+        }
+        
+    } catch (error) {
+        console.log(error);
+      res.status(500).json({ message: 'There was an error resetting the password. Try again later.' });
+    }
+
+};

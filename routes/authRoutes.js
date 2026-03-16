@@ -6,6 +6,8 @@ const verifyToken = require("../controllers/authController").verifyToken;
 
 
 router.post("/login", authController.login);
+router.post("/password/reset", authController.resetPassword);
+router.post("/password/forgot", authController.forgotPassword);
 
 router.use(verifyToken); 
 router.post("/logout", authController.adminLogout);
@@ -14,7 +16,6 @@ router.get("/me", authController.getMe);
 
 // All routes after this middleware are restricted to Super Admin
 router.use(restrictTo("superadmin"));
-router.post("/reset-password", authController.resetPassword);
 router.post("/create-admin", authController.createAdmin);
 
 module.exports = router;

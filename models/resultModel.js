@@ -37,9 +37,7 @@ class Result {
       catch(error) {
         console.log("Error creating result:", error); 
           return error;
-       }
-
-      
+       }  
     }
     
   static async getResultsByStudentId(mat_no) {
@@ -115,6 +113,13 @@ class Result {
   static async blockUnblockResult(mat_no) {
         const [result] = await db.query(
           `UPDATE results SET blocked = NOT blocked WHERE id = ?`,
+          [mat_no]  
+        );
+        return result.affectedRows > 0;
+      }
+  static async blockResult(mat_no) {
+        const [result] = await db.query(
+          `UPDATE results SET blocked = 1 WHERE mat_no = ?`,
           [mat_no]  
         );
         return result.affectedRows > 0;

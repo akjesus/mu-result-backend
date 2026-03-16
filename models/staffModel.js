@@ -7,7 +7,14 @@ class Staff {
     const [rows] = await db.query(`SELECT * 
       FROM staff 
       WHERE username = ? 
-      or email = ?`, [username, username]);
+      or email = ? LIMIT 1`, [username, username]);
+    return rows.length ? rows[0] : null;
+  }
+  static async findByResetCode(resetCode) {
+    const [rows] = await db.query(
+      `SELECT * FROM staff WHERE resetCode = ?`,
+      [resetCode]
+    );
     return rows.length ? rows[0] : null;
   }
 static async findById(id) {
@@ -40,9 +47,27 @@ static async findById(id) {
     );
     return result.affectedRows > 0;
   }
+  async findByResetCode(resetCode) {
+    const [rows] = await db.query(
+      `SELECT * FROM staff WHERE resetCode = ?`,
+      [resetCode]
+    );
+    return rows.length ? rows[0] : null;
+  }
+   static async resetPassword(id, code, expires) {
+      const [result] = await db.query(`
+        UPDATE staff
+        set resetCode = ?, resetExpires = ?
+        where id = ?`, [code, expires, id]);
+        return result.affectedRows > 0;
+    }
   static async updatePassword(id, newPassword) {
     const [result] = await db.query(
-      `UPDATE staff SET password = ? WHERE id = ?`,
+      `UPDATE staff 
+      SET password = ?, 
+      resetCode = NULL, 
+      resetExpires = NULL 
+      WHERE id = ?`,
       [newPassword, id]
     );
     return result.affectedRows > 0;

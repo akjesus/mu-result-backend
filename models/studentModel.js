@@ -51,27 +51,53 @@ class Student {
     );
     return result.insertId;
   }
-  static async blockUnblockStudent(id) {
+  static async blockUnblockStudent(id, isBlocked) {
+    console.log(id, isBlocked)
     const [result] = await db.query(
-      `UPDATE students SET blocked = NOT blocked WHERE id = ?`,
-      [id]  
+      `UPDATE students SET blocked = ? WHERE id = ?`,
+      [isBlocked === true ? 1 : 0, id]
     );
     return result.affectedRows > 0;
   }
-  static async changePassword(password, id) {
+  static async changePassword(id, password) {
     const [result] = await db.query(
-      `UPDATE students SET password = ?, updated_at = NOW() WHERE id = ?`,
+      `UPDATE students 
+      SET password = ?, 
+      updated_at = NOW(),
+      resetCode = NULL, resetExpires = NULL
+      WHERE id = ?`,  
       [password, id]
     );
     return result.affectedRows > 0;
   }
-  static async resetPassword(user, password) {
+  static async resetPassword(id, code, expires) {
     const [result] = await db.query(`
       UPDATE students
-      set password = ?
+      set resetCode = ?, resetExpires = ?
+      where id = ?`, [code, expires, id]);
+      return result.affectedRows > 0;
+  }
+  static async changePassword(user, password) {
+    const [result] = await db.query(`
+      UPDATE students
+      set password = ?, resetCode = NULL, resetExpires = NULL
       where id = ?`, [password, user]);
       return result.affectedRows > 0;
   }
+  static async blockStudent(mat_no) {
+          const [result] = await db.query(
+            `UPDATE students SET blocked = 1 WHERE mat_no = ?`,
+            [mat_no]  
+          );
+          return result.affectedRows > 0;
+        }
+    static async findByResetCode(resetCode) {
+        const [rows] = await db.query(
+          `SELECT * FROM students WHERE resetCode = ?`,
+          [resetCode]
+        );
+        return rows.length ? rows[0] : null;
+      }
   static async resetAllPasswords(newPassword) {
     const [result] = await db.query(`
       UPDATE students
