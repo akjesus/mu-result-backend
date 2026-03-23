@@ -141,9 +141,10 @@ exports.deleteUser = async (req, res) => {
 
 
 exports.updateStudent = async (req, res) => {
-    const id = parseInt(req.params.id);
-    const { first_name, last_name, email, username, department, level } = req.body; 
+    
     try {
+      const id = parseInt(req.params.id);
+      const { first_name, last_name, email, username, department, level } = req.body; 
         const student = await Student.findById(id);
         if (!student) {
             return res.status(404).json({ success: false, code: 404, message:'Student not found' });

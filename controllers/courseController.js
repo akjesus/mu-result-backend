@@ -9,7 +9,7 @@ exports.getAllCourses = async (req, res) => {
     let query = `SELECT courses.id as id, courses.name as title, courses.code, courses.credit_load as credit,
             courses.active AS active,
             departments.name AS departments, levels.name AS level, semesters.name AS semester,
-            departments.id AS departmentId, levels.id AS levelId, semesters.id AS semesterId
+            departments.id AS departmentId, levels.id AS levelId, semesters.id AS semester_id
             FROM courses
             JOIN departments ON courses.department_id = departments.id
             JOIN levels ON courses.level_id = levels.id

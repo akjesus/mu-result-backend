@@ -22,15 +22,15 @@ class Result {
     return rows.length ? rows[0] : null;
   }
   
-  static async createResult(mat_no, course_id, first_quiz, second_quiz, exam_score, session_id, semester_id) {
-      const totalScore = Number(first_quiz) + Number(second_quiz) + Number(exam_score);
+  static async createResult(mat_no, course_id, cat, mid_term, exam_score, session_id, semester_id, created_by) {
+      const totalScore = Number(cat) + Number(mid_term) + Number(exam_score);
       const grade = Result.calculateGrade(totalScore);
       try {
         const [result] = await db.query(
           `INSERT INTO results
-          (mat_no, course_id, first_quiz, second_quiz, exam_score, session_id, semester_id, grade, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-          [mat_no, course_id, first_quiz, second_quiz, exam_score, session_id, semester_id, grade]
+          (mat_no, course_id, cat, mid_term, exam_score, session_id, semester_id, grade, created_at, updated_at, created_by, is_deleted)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
+          [mat_no, course_id, cat, mid_term, exam_score, session_id, semester_id, grade, created_by, 0]
       );
       return result.insertId;
       }
@@ -47,18 +47,18 @@ class Result {
     return rows;
   }
 
-  static async updateResult(first_quiz, second_quiz, exam_score, grade, id) {
+  static async updateResult(cat, mid_term, exam_score, grade, updated_by, id) {
     const [result] = await db.query(
       `UPDATE results 
-       SET first_quiz = ?, second_quiz = ?, exam_score = ?, grade = ?
+       SET cat = ?, mid_term = ?, exam_score = ?, grade = ?, updated_by = ?, updated_at = NOW()
        WHERE id = ?`,    
-            [first_quiz, second_quiz, exam_score, grade, id]
+            [cat, mid_term, exam_score, grade, updated_by, id]
     );
     return result.affectedRows > 0;
   }
 
-  static async deleteResult(resultId) {
-    const [result] = await db.query("DELETE FROM results WHERE id = ?", [resultId]);
+  static async deleteResult( deleted_by, resultId) {
+    const [result] = await db.query("UPDATE results SET is_deleted = 1, deleted_by = ?, deleted_at = NOW() WHERE id = ?", [deleted_by, resultId]);
     return result.affectedRows > 0;
   }
   static async getResultsByCourseId(courseId) {
@@ -79,20 +79,64 @@ class Result {
     return rows;
   }
 
+  static async approveResult(session_id, semester_id, department_id, level_id) {
+    const [semester] = await db.query(`
+      SELECT * FROM semesters 
+      WHERE id = ?
+      LIMIT 1`
+      , [semester_id]);
+      const semId = semester[0].name === 'First' ? 1 : 2;
+      const [courseRows] = await db.query(`
+      SELECT DISTINCT c.id, c.name, c.code
+      FROM courses c 
+      where c.level_id = ? 
+      AND c.department_id = ? 
+      AND c.semester_id = ?`, 
+      [level_id, department_id, semId]);
+    const courseIds = courseRows.map(row => row.id);
+    const courses = courseRows.map(row => `${row.code}: ${row.name}`)
+    if (courseIds.length === 0) {
+      console.log("No courses found for the specified criteria.");
+      return false;
+    }
+    const [approved] = await db.query(`update results set approved = 1 where course_id IN (?) AND session_id = ?`, 
+    [courseIds, session_id]);
+
+      if (approved.affectedRows > 0) return courses;
+      else return false
+    }
+
+ static async approveCourseResult(session_id, courses_id) {
+    const [approved] = await db.query(`UPDATE results 
+                   SET approved = 1 
+                   WHERE session_id = ? 
+                   AND course_id IN (?)`, [session_id, courses_id]);
+
+    try {
+
+    return approved;
+
+    } catch (error) {
+      console.log("Error in approveCourseResult:", error);
+      return false;
+    }
+  }
+
   //bulk upload results by course id
   static async bulkUploadResults(results) {
       const values = results.map(result => {
-        const totalScore = Number(result.first_quiz) + Number(result.second_quiz) + Number(result.exam_score);
+        const totalScore = Number(result.cat) + Number(result.mid_term) + Number(result.exam_score);
         const grade = Result.calculateGrade(totalScore);
         return [
           result.mat_no,
           result.course_id,
-          result.first_quiz,
-          result.second_quiz,
+          result.cat,
+          result.mid_term,
           result.exam_score,
           result.semester_id,
           result.session_id,
           grade,
+          result.created_by,
           new Date(),
           new Date()
         ];
@@ -100,7 +144,7 @@ class Result {
       try {
         const [res] = await db.query(
         `INSERT INTO results 
-        (mat_no, course_id, first_quiz, second_quiz, exam_score, semester_id, session_id, grade, created_at, updated_at)  
+        (mat_no, course_id, cat, mid_term, exam_score, semester_id, session_id, grade, created_by, created_at, updated_at)  
            VALUES ?`,
           [values]
       );
@@ -114,7 +158,7 @@ class Result {
     }
   static async blockUnblockResult(mat_no) {
         const [result] = await db.query(
-          `UPDATE results SET blocked = NOT blocked WHERE id = ?`,
+          `UPDATE results SET approved = NOT approved WHERE id = ?`,
           [mat_no]  
         );
         return result.affectedRows > 0;
@@ -150,6 +194,7 @@ class Result {
       FROM results r
       JOIN courses c ON r.course_id = c.id
       WHERE r.mat_no = ?
+      AND r.is_deleted = 0
       GROUP BY r.mat_no
     `, [mat_no]);
     return rows.length ? rows[0] : null;
@@ -176,6 +221,7 @@ class Result {
         FROM results r
         JOIN courses c ON r.course_id = c.id
         WHERE c.department_id = ?
+        AND r.is_deleted = 0
         GROUP BY r.mat_no
       ) AS sub
     `, [departmentId]);
@@ -211,6 +257,7 @@ class Result {
         ) / SUM(c.credit_load)) AS cgpa
       FROM results r
       JOIN courses c ON r.course_id = c.id
+      WHERE r.is_deleted = 0
       GROUP BY r.mat_no
     `);
     return rows;
@@ -235,6 +282,7 @@ class Result {
       JOIN students s ON r.mat_no = s.mat_no
       JOIN departments d ON s.department_id = d.id
       JOIN courses c ON r.course_id = c.id
+      WHERE r.is_deleted = 0
       GROUP BY r.mat_no, s.first_name, s.last_name, department
       ORDER BY cgpa DESC
       LIMIT 1
@@ -258,6 +306,7 @@ class Result {
       JOIN students s ON r.mat_no = s.mat_no
       JOIN departments d ON s.department_id = d.id
       JOIN courses c ON r.course_id = c.id
+      WHERE r.is_deleted = 0
       GROUP BY r.mat_no, s.first_name, s.last_name, department
       ORDER BY cgpa ASC
       LIMIT 1
@@ -286,6 +335,7 @@ class Result {
           ) / SUM(c.credit_load)) AS cgpa
         FROM results r
         JOIN courses c ON r.course_id = c.id
+        WHERE r.is_deleted = 0
         GROUP BY r.mat_no
       ) AS sub
     `);
@@ -317,11 +367,11 @@ class Result {
     `, [mat_no]);
 
   // Get total courses taken (all semesters)
-  const [allCoursesRows] = await db.query(`SELECT id FROM results WHERE mat_no = ?`, [mat_no]);
+  const [allCoursesRows] = await db.query(`SELECT id FROM results WHERE mat_no = ? AND is_deleted = 0 AND approved = 1`, [mat_no]);
   const totalCourses = allCoursesRows.length;
 
   // Get total courses failed (current semester)
-  const [failedCoursesRows] = await db.query(`SELECT id FROM results WHERE mat_no = ? AND semester_id = ? AND grade = 'F'`, [mat_no, semester_id]);
+  const [failedCoursesRows] = await db.query(`SELECT id FROM results WHERE mat_no = ? AND semester_id = ? AND grade = 'F' AND is_deleted = 0 AND approved = 0`, [mat_no, semester_id]);
   const totalFailed = failedCoursesRows.length;
     // Calculate GPA for the semester
     const [rows] = await db.query(`
@@ -352,7 +402,7 @@ class Result {
         ) / SUM(c.credit_load)) AS gpa
       FROM results r
       JOIN courses c ON r.course_id = c.id
-      WHERE r.mat_no = ? AND r.semester_id = ?
+      WHERE r.mat_no = ? AND r.semester_id = ? AND r.is_deleted = 0
     `, [mat_no, semester_id]);
 
     // Calculate CGPA for the student (all semesters)
@@ -385,6 +435,8 @@ class Result {
       FROM results r
       JOIN courses c ON r.course_id = c.id
       WHERE r.mat_no = ?
+      AND r.is_deleted = 0
+      GROUP BY r.mat_no
     `, [mat_no]);
 
     // Always return CGPA, total courses, and performance, even if no results in active semester
@@ -408,6 +460,7 @@ class Result {
       JOIN results r ON c.id = r.course_id
       JOIN sessions s ON r.session_id = s.id
       JOIN semesters sem ON r.semester_id = sem.id
+      WHERE r.is_deleted = 0
       ORDER BY c.code ASC
     `);
     return rows;

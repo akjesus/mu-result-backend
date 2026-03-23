@@ -14,15 +14,18 @@ class Course {
             credit_load,
             active,
     ) {
+    const semester =semester_id === 1? "First" : "Second";
+    console.log(name, code, department_id, level_id, semester_id, credit_load, active, semester)
     const [result] = await db.query(
       `INSERT INTO courses 
-      (name, code, department_id, level_id, semester_id, credit_load, active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      (name, code, department_id, level_id, semester_id, semester,credit_load, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
         [   name,
             code, 
             department_id, 
             level_id,
             semester_id,
+            semester,
             credit_load,
             active]
     );

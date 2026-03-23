@@ -16,7 +16,7 @@ exports.getAllResults = async (req, res) => {
     try {
         const offset = (page - 1) * limit;
         // Build dynamic WHERE clause and params
-        let whereClauses = ['results.blocked = 0'];
+        let whereClauses = [];
         let params = [];
         if (department) {
             whereClauses.push('students.department_id = ?');
@@ -35,7 +35,7 @@ exports.getAllResults = async (req, res) => {
             params.push(semester);
         }
         const whereSQL = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
-        let query = `SELECT (results.first_quiz + results.second_quiz + results.exam_score) as total_score, 
+        let query = `SELECT (results.cat + results.mid_term + results.exam_score) as total_score, 
             results.grade, CONCAT(students.first_name,' ', students.last_name)as student_name, 
             courses.name AS course, semesters.name AS semester,
             sessions.name AS session, departments.name AS department, levels.name AS level
@@ -86,20 +86,20 @@ exports.getResultById = async (req, res) => {
 };
 
 exports.createResult = async (req, res) => {
-    const { mat_no, course_id, first_quiz, second_quiz, exam_score, semester_id, session_id } = req.body.results;
-    //validate inputs
-    if (!mat_no || !course_id || !first_quiz || !second_quiz || !exam_score || !semester_id || !session_id) {
+    try {
+        const created_by = req.user.id;
+        const { mat_no, course_id, cat, mid_term, exam_score, semester_id, session_id } = req.body.results;
+
+    if (!mat_no || !course_id || !cat || !mid_term || !exam_score || !semester_id || !session_id) {
         return res.status(400).json({ success: false, code: 400, message: "All fields are required!" });
     }
-
-    try {
         // Check for duplicate
         const [existing] = await Result.findByStudentAndCourse(mat_no, course_id);
         if (existing && existing.length > 0) {
             return res.status(409).json({ success: false, code: 409, message: "Result for this student and course already exists!" });
         }
 
-        const newResultId = await Result.createResult(mat_no, course_id, first_quiz, second_quiz, exam_score, semester_id, session_id);
+        const newResultId = await Result.createResult(mat_no, course_id, cat, mid_term, exam_score, session_id, semester_id, created_by);
         return res.status(201).json({success: true, code: 201, message: 'Result created successfully', result_id: newResultId });
     }
     catch (error) {
@@ -110,10 +110,12 @@ exports.createResult = async (req, res) => {
 
 // Update an existing result
 exports.updateResult = async (req, res) => {
-    const resultId = parseInt(req.params.id);
-    const { student_id, course_id, score, grade, semester_id, level_id } = req.body;
+    
     try {
-        const updated = await Result.updateResult(resultId, student_id, course_id, score, grade, semester_id, level_id);
+        const resultId = parseInt(req.params.id);
+        const updated_by = req.user.id;
+        const { student_id, course_id, score, grade, semester_id, level_id } = req.body;
+        const updated = await Result.updateResult(resultId, student_id, course_id, score, grade, semester_id, level_id, updated_by);
         if (!updated) {
             return res.status(404).json({ success: false, code: 404, message: 'Result not found or no changes made' });
         }
@@ -125,9 +127,11 @@ exports.updateResult = async (req, res) => {
 };
 // Delete a result
 exports.deleteResult = async (req, res) => {
-    const resultId = parseInt(req.params.id);
+    
     try {
-        const deleted = await Result.deleteResult(resultId);
+        const resultId = parseInt(req.params.id);
+        const deleted_by = req.user.id;
+        const deleted = await Result.deleteResult( deleted_by, resultId,);
         if (!deleted) {
             return res.status(404).json({ success: false, code: 404, message: 'Result not found' });
         }
@@ -139,9 +143,11 @@ exports.deleteResult = async (req, res) => {
     }
 };
 
+
 //bulk upload results
 exports.bulkUploadResults = async (req, res) => {
     try {
+        const created_by = req.user.id;
         if (!req.file) {
             return res.status(400).json({ success: false, code: 400, message: "No file uploaded!" });
         }
@@ -184,11 +190,12 @@ exports.bulkUploadResults = async (req, res) => {
                     await Result.createResult(
                         mat_no,
                         course_id,
-                        parseFloat(r.first_quiz),
-                        parseFloat(r.second_quiz),
+                        parseFloat(r.cat),
+                        parseFloat(r.mid_term),
                         parseFloat(r.exam_score),
                         session_id,
-                        semester_id
+                        semester_id,
+                        created_by
                     );
                     insertedCount++;
                 } catch (error) {
@@ -225,16 +232,13 @@ exports.getResultsByStudent = async (req, res) => {
     try {
         // Destructure from query
         const { session, level, semester } = req.query;
-        if (!session || !level) {
-            return res.status(400).json({ success: false, code: 400, message: "Session and Level are required!" });
-        }
-        let results;
-        if (semester) {
-            // Fetch for specific semester
-            [results] = await db.query(
+        if (!session || !level || !semester) {
+            return res.status(400).json({ success: false, code: 400, message: "Session, Level, and Semester are required!" });
+        }   
+            const [results] = await db.query(
                 `SELECT results.id, results.course_id, courses.code as code, courses.name AS title, students.first_name, 
                 students.last_name, students.mat_no, 
-                results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,
+                results.cat + results.mid_term + results.exam_score AS total_score, results.grade,
                 courses.credit_load as credit, semesters.name as semester, sessions.name as session
                 FROM results
                 JOIN courses ON results.course_id = courses.id
@@ -244,29 +248,11 @@ exports.getResultsByStudent = async (req, res) => {
                 WHERE results.mat_no = ?
                 AND results.session_id = ?
                 AND results.semester_id = ?
-                AND students.level_id = ? 
-                AND results.blocked = 0 `,
+                AND courses.level_id = ? 
+                AND results.approved = 1 
+                AND results.is_deleted = 0`,
                 [mat_no, session, semester, level]
             );
-        } else {
-            // Fetch for session only (all semesters)
-            [results] = await db.query(
-                `SELECT results.id, results.course_id, courses.code as code, courses.name AS title, students.first_name, 
-                students.last_name, students.mat_no, 
-                results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,
-                courses.credit_load as credit, semesters.name as semester, sessions.name as session
-                FROM results
-                JOIN courses ON results.course_id = courses.id
-                JOIN students ON results.mat_no = students.mat_no
-                JOIN sessions ON results.session_id = sessions.id
-                JOIN semesters ON results.semester_id = semesters.id
-                WHERE results.mat_no = ?
-                AND results.session_id = ?
-                AND students.level_id = ? 
-                AND results.blocked = 0 `,
-                [mat_no, session, level]
-            );
-        }
         if(results.length === 0) {
             return res.status(200).json({ success: true, code: 404, message: `No results for this session${semester ? ' and semester' : ''} yet` });
         }
@@ -284,13 +270,14 @@ exports.getResultsByDepartment = async (req, res) => {
             `SELECT  results.id, departments.name as department_name, courses.name AS course_name, 
             students.first_name, students.last_name, 
                     students.mat_no,    
-                    results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,
+                    results.cat + results.mid_term + results.exam_score AS total_score, results.grade,
                     courses.credit_load
              FROM results
              JOIN courses ON results.course_id = courses.id
              JOIN students ON results.mat_no = students.mat_no
              JOIN departments ON students.department_id = departments.id
-             WHERE departments.id = ?`,
+             WHERE departments.id = ?
+             AND results.is_deleted = 0`,
             [departmentId]
         );
         return res.status(200).json({success: true, code: 200, results});
@@ -304,12 +291,13 @@ exports.getResultsByCourse = async (req, res) => {
         const courseId = req.params.id;
         const [results] = await db.query(
             `SELECT results.id,  courses.name AS course_name, students.first_name, 
-            students.last_name, students.mat_no, results.first_quiz, results.second_quiz, results.exam_score,
-            results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade
+            students.last_name, students.mat_no, results.cat, results.mid_term, results.exam_score,
+            results.cat + results.mid_term + results.exam_score AS total_score, results.grade
              FROM results
              JOIN courses ON results.course_id = courses.id
              JOIN students ON results.mat_no = students.mat_no
-             WHERE courses.id = ?`,
+             WHERE courses.id = ?
+             AND results.is_deleted = 0`,
             [courseId]
         );
         return res.status(200).json({success: true, code: 200, results});
@@ -328,14 +316,15 @@ exports.getResultsByDepartmentAndLevel = async (req, res) => {
         const [results] = await db.query(
             `SELECT  results.id, departments.name as department_name, courses.name AS course_name,
             students.first_name, students.last_name, 
-                    students.mat_no, results.first_quiz, results.second_quiz, results.exam_score,
-                    results.first_quiz + results.second_quiz + results.exam_score AS total_score, results.grade,       
+                    students.mat_no, results.cat, results.mid_term, results.exam_score,
+                    results.cat + results.mid_term + results.exam_score AS total_score, results.grade,       
                     courses.credit_load
              FROM results
              JOIN courses ON results.course_id = courses.id 
                 JOIN students ON results.mat_no = students.mat_no
                 JOIN departments ON students.department_id = departments.id
-                WHERE departments.id = ? AND students.level_id = ?`,
+                WHERE departments.id = ? AND students.level_id = ?
+                AND results.is_deleted = 0`,
             [deptId, levelId]
         );
         if(results.length === 0) {
@@ -352,11 +341,11 @@ exports.getResultsByDepartmentAndLevel = async (req, res) => {
 exports.blockResult = async (req, res) => {
     const mat_no = parseInt(req.params.mat_no);
     try {
-        const blocked = await Result.blockUnblockResult(mat_no);
-        if (!blocked) {
-            return res.status(404).json({ success: false, code: 404, message: 'Result not found or already blocked' });
+        const approved = await Result.blockUnblockResult(mat_no);
+        if (!approved) {
+            return res.status(404).json({ success: false, code: 404, message: 'Result not found or already approved' });
         }
-        return res.status(200).json({ success: true, code: 200, message: 'Result blocked successfully' });
+        return res.status(200).json({ success: true, code: 200, message: 'Result approved successfully' });
     }
     catch (error) {
         console.log('Error blocking result:', error.message);
@@ -461,10 +450,10 @@ exports.getallResultsforDepartment = async (req, res) => {
                         'code', courses.code,
                         'name', courses.name,
                         'grade', results.grade,
-                        'first_quiz', results.first_quiz,
-                        'second_quiz', results.second_quiz,
+                        'cat', results.cat,
+                        'mid_term', results.mid_term,
                         'exam_score', results.exam_score,
-                        'total_score', results.first_quiz + results.second_quiz + results.exam_score,
+                        'total_score', results.cat + results.mid_term + results.exam_score,
                         'credit_load', courses.credit_load
                     )
                 ) AS courses_info
@@ -479,7 +468,7 @@ exports.getallResultsforDepartment = async (req, res) => {
             WHERE departments.id = ?
             AND results.session_id = ?
             AND results.semester_id = ?
-            AND results.blocked = 0
+            AND results.is_deleted = 0
             GROUP BY students.mat_no, students.first_name, students.last_name, departments.name, levels.name
             ORDER BY students.mat_no ASC`,
             [departmentId, session, semester]
@@ -504,14 +493,15 @@ exports.getCoursesWithResults = async (req, res) => {
 
 exports.batchUpdateResults = async (req, res) => {
     const updates = req.body.results;
+    console.log(updates);
     if (!Array.isArray(updates) || updates.length === 0) {
         return res.status(400).json({ success: false, code: 400, message: "Updates array is required!" });
     }
     try {
         let updatedCount = 0;
         for (const update of updates) {
-            const { id, first_quiz, second_quiz, exam_score, grade } = update;
-            const updated = await Result.updateResult(first_quiz, second_quiz, exam_score, grade, id);
+            const { id, cat, mid_term, exam_score, grade } = update;
+            const updated = await Result.updateResult(cat, mid_term, exam_score, grade, id);
             if (updated) updatedCount++;
         }
         return res.status(200).json({ success: true, code: 200, message: `${updatedCount} results updated successfully` });
@@ -521,3 +511,47 @@ exports.batchUpdateResults = async (req, res) => {
         return res.status(500).json({ success: false, code: 500, message: error.message });
     }
 };
+
+exports.approveResults = async (req, res) => {
+    const { session_id, semester_id, department_id, level_id} = req.body.results;
+
+    if (!session_id || !semester_id) {
+        return res.status(400).json({ success: false, code: 400, message: "Session ID and Semester ID are required!" });
+    }
+
+    try {
+        const approved = await Result.approveResult( session_id, semester_id, department_id, level_id );
+
+        if (!approved) {
+            return res.status(404).json({ success: false, code: 404, message: 'No results found to approve or already approved' });
+        }
+
+        return res.status(200).json({ success: true, code: 200, message: 'Results approved successfully', courses: approved });
+    } catch (error) {
+        console.log('Error approving results:', error.message);
+        return res.status(500).json({ success: false, code: 500, message: error.message });
+    }
+};
+
+exports.approveCourses = async (req, res) => {
+   const {courses_id, session_id} = req.body.data
+   try {
+    if(!courses_id || !session_id) {
+        return res.status(400).json({ success: false, code: 400, message: "Course ID and Session ID are required!" });
+    }
+    const approved = await Result.approveCourseResult(session_id, courses_id);
+    console.log(approved)
+    if (approved.affectedRows > 0) {
+        return res.status(200).json({ success: true, code: 200, message: `${approved.affectedRows} Courses results approved successfully` });
+    }
+    else {
+        return res.status(200).json({ success: true, code: 304, message: 'Warning: No results to aprove for the selected courses' });
+    }
+
+   }
+   catch (error) {
+        console.log('Error approving course results:', error.message);
+        return res.status(500).json({ success: false, code: 500, message: error.message }); 
+   }
+
+}

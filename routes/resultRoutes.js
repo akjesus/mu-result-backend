@@ -32,6 +32,8 @@ router.put("/:id", resultController.updateResult);
 
 router.use(restrictTo("superadmin"));
 router.delete("/:id", resultController.deleteResult);
+router.post("/approve", resultController.approveResults);
+router.post("/approve/courses", resultController.approveCourses)
 
 
 

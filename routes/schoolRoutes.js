@@ -9,6 +9,7 @@ router.use(restrictTo("student", "staff", "admin", "superadmin"));
 router.get('/faculties', schoolController.getAllFaculties);
 router.get('/sessions', schoolController.getSessions);
 router.get('/levels', schoolController.getLevels);
+router.get('/sessions/:id/semesters', schoolController.getSemestersForSession);
 
 router.use(restrictTo( 'staff', "admin", "superadmin"));
 router.get('/departments', schoolController.getAllDepartments);
@@ -17,7 +18,7 @@ router.get('departments/:id', schoolController.getDepartmentById);
 router.put('/departments/:id', schoolController.updateDepartment);
 router.post('/faculties', schoolController.createFaculty);
 router.get('/faculties/:id', schoolController.getFacultyById);
-router.get('/sessions/:id/semesters', schoolController.getSemestersForSession);
+
 
 
 router.use(restrictTo('admin', "superadmin"));
