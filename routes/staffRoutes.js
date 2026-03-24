@@ -6,6 +6,7 @@ const verifyToken = require('../controllers/authController').verifyToken;
 
 router.use(verifyToken);
 router.get("/me", staffController.getMyProfile);
+router.post("/me/change-password", staffController.changeMyPassword);
 
 router.use(restrictTo("admin", "superadmin", "staff"));
 router.get('/', staffController.getAllStaff);

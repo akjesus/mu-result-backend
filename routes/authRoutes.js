@@ -4,10 +4,9 @@ const authController = require("../controllers/authController");
 const restrictTo = require("../controllers/authController").restrictTo;
 const verifyToken = require("../controllers/authController").verifyToken;
 
-
 router.post("/login", authController.login);
 
-router.use(verifyToken); 
+router.use(verifyToken);
 router.post("/logout", authController.adminLogout);
 router.post("/refresh", authController.refreshToken);
 router.get("/me", authController.getMe);

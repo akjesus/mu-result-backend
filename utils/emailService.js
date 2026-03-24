@@ -1,19 +1,18 @@
-const nodemailer = require('nodemailer');
-const pug = require('pug');
-const htmlToText = require('html-to-text');
+const nodemailer = require("nodemailer");
+const pug = require("pug");
+const htmlToText = require("html-to-text");
 // new Email(user, url).sendWelcome();
-
 
 module.exports = class Email {
   constructor(user, url) {
     this.to = user.email;
-    this.firstName = user.name.split(' ')[0];
+    this.firstName = user.name.split(" ")[0];
     this.url = url;
     this.from = `Maduka University  <${process.env.SENDPULSE_FROM}>`;
   }
 
   newTransport() {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       //SendGrid transporter
       return nodemailer.createTransport({
         host: process.env.SENDGRID_HOST,
@@ -43,7 +42,7 @@ module.exports = class Email {
         firstName: this.firstName,
         url: this.url,
         subject: this.subject,
-      }
+      },
     );
 
     //2. Define the email options
@@ -59,17 +58,17 @@ module.exports = class Email {
   }
 
   async sendWelcome() {
-    await this.send('welcome', 'Welcome to Akjesus Natours Application');
+    await this.send("welcome", "Welcome to Akjesus Natours Application");
   }
 
   async sendBooking() {
-    await this.send('booking', 'You have successfully purchased a Tour');
+    await this.send("booking", "You have successfully purchased a Tour");
   }
 
   async sendReset() {
     await this.send(
-      'passwordReset',
-      'Password Reset Token: Valid for 10 Minutes'
+      "passwordReset",
+      "Password Reset Token: Valid for 10 Minutes",
     );
   }
 };
