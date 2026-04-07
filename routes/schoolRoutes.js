@@ -9,6 +9,10 @@ router.use(restrictTo("student", "staff", "admin", "superadmin"));
 router.get("/faculties", schoolController.getAllFaculties);
 router.get("/sessions", schoolController.getSessions);
 router.get("/sessions/all", schoolController.getAllSessions);
+router.post("/sessions", schoolController.createSession);
+router.put("/sessions/:id", schoolController.updateSession);
+router.delete("/sessions/:id", schoolController.deleteSession);
+
 router.get("/levels", schoolController.getLevels);
 router.get("/sessions/:id/semesters", schoolController.getSemestersForSession);
 

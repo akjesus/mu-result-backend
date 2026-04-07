@@ -36,14 +36,12 @@ exports.createFaculty = async (req, res) => {
   const { name } = req.body;
   try {
     const faculty = await Faculty.createFaculty(name);
-    return res
-      .status(200)
-      .json({
-        success: true,
-        code: 200,
-        message: "Faculty Created Successfully!",
-        faculty,
-      });
+    return res.status(200).json({
+      success: true,
+      code: 200,
+      message: "Faculty Created Successfully!",
+      faculty,
+    });
   } catch (error) {
     console.log(error);
     return res
@@ -56,13 +54,11 @@ exports.deleteFaculty = async (req, res) => {
   const { id } = req.params;
   try {
     const faculty = await Faculty.deleteFaculty(id);
-    return res
-      .status(200)
-      .json({
-        success: true,
-        code: 200,
-        message: "Faculty deleted Successfully!",
-      });
+    return res.status(200).json({
+      success: true,
+      code: 200,
+      message: "Faculty deleted Successfully!",
+    });
   } catch (error) {
     console.log(error);
     return res
@@ -111,24 +107,20 @@ exports.createDepartment = async (req, res) => {
   try {
     const { name, faculty_id } = req.body;
     if (!name || !faculty_id) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          code: 400,
-          message: "Department / Faculty name is required",
-        });
+      return res.status(400).json({
+        success: false,
+        code: 400,
+        message: "Department / Faculty name is required",
+      });
     }
     const departmentId = await Department.createDepartment(name, faculty_id);
     const newDepartment = await Department.findById(departmentId);
-    return res
-      .status(201)
-      .json({
-        success: true,
-        code: 201,
-        message: "Department created successfully",
-        department: newDepartment,
-      });
+    return res.status(201).json({
+      success: true,
+      code: 201,
+      message: "Department created successfully",
+      department: newDepartment,
+    });
   } catch (error) {
     console.log("Error creating department:", error.message);
     return res
@@ -148,13 +140,11 @@ exports.updateDepartment = async (req, res) => {
         .json({ success: false, code: 404, message: "Department not found" });
     }
     if (!name || !faculty_id) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          code: 400,
-          message: "Department / Faculty name is required",
-        });
+      return res.status(400).json({
+        success: false,
+        code: 400,
+        message: "Department / Faculty name is required",
+      });
     }
     const updated = await Department.updateDepartment(
       departmentId,
@@ -163,22 +153,18 @@ exports.updateDepartment = async (req, res) => {
     );
     if (updated) {
       const updatedDepartment = await Department.findById(departmentId);
-      return res
-        .status(200)
-        .json({
-          success: true,
-          code: 200,
-          message: "Department updated successfully",
-          department: updatedDepartment,
-        });
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Department updated successfully",
+        department: updatedDepartment,
+      });
     } else {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          code: 500,
-          message: "Failed to update department",
-        });
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to update department",
+      });
     }
   } catch (error) {
     console.log("Error updating department:", error);
@@ -199,21 +185,17 @@ exports.deleteDepartment = async (req, res) => {
     }
     const deleted = await Department.deleteDepartment(departmentId);
     if (deleted) {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          code: 200,
-          message: "Department deleted successfully",
-        });
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Department deleted successfully",
+      });
     } else {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          code: 500,
-          message: "Failed to delete department",
-        });
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to delete department",
+      });
     }
   } catch (error) {
     console.log("Error deleting department:", error);
@@ -231,7 +213,7 @@ exports.getSessions = async (req, res) => {
         .status(404)
         .json({ success: false, code: 404, message: "No sessions found" });
     }
-    console.log(sessions)
+    console.log(sessions);
     return res.status(200).json({ success: true, code: 200, sessions });
   } catch (error) {
     console.log("Error fetching sessions:", error);
@@ -265,13 +247,11 @@ exports.getSemestersForSession = async (req, res) => {
     const semesters = await Session.getSemestersForSession(sessionId);
     if (!semesters) {
       console.log("No semesters found for session ID:", sessionId);
-      return res
-        .status(404)
-        .json({
-          success: false,
-          code: 404,
-          message: "No semesters found for this session",
-        });
+      return res.status(404).json({
+        success: false,
+        code: 404,
+        message: "No semesters found for this session",
+      });
     }
     return res.status(200).json({ success: true, code: 200, semesters });
   } catch (error) {
@@ -293,21 +273,17 @@ exports.activateSemester = async (req, res) => {
     }
     const activated = await Semester.activateSemester(semesterId);
     if (activated) {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          code: 200,
-          message: "Semester activated successfully",
-        });
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Semester activated successfully",
+      });
     } else {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          code: 500,
-          message: "Failed to activate semester",
-        });
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to activate semester",
+      });
     }
   } catch (error) {
     console.log("Error activating semester:", error);
@@ -323,6 +299,100 @@ exports.getAllSessions = async (req, res) => {
     return res.status(200).json({ success: true, code: 200, sessions });
   } catch (error) {
     console.log("Error fetching all sessions:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
+
+exports.createSession = async (req, res) => {
+  const { name, start_date, end_date } = req.body;
+  try {
+    const sessionId = await Session.createSession(name, start_date, end_date);
+    return res.status(201).json({
+      success: true,
+      code: 201,
+      message: "Session created successfully",
+      sessionId,
+    });
+  } catch (error) {
+    console.log("Error creating session:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
+
+exports.updateSession = async (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  const { name, start_date, end_date } = req.body;
+  try {
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res
+        .status(404)
+        .json({ success: false, code: 404, message: "Session not found" });
+    }
+    const updated = await Session.updateSession(
+      sessionId,
+      name,
+      start_date,
+      end_date,
+    );
+    if (updated) {
+      return res
+        .status(200)
+        .json({
+          success: true,
+          code: 200,
+          message: "Session updated successfully",
+        });
+    } else {
+      return res
+        .status(500)
+        .json({
+          success: false,
+          code: 500,
+          message: "Failed to update session",
+        });
+    }
+  } catch (error) {
+    console.log("Error updating session:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
+
+exports.deleteSession = async (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  try {
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res
+        .status(404)
+        .json({ success: false, code: 404, message: "Session not found" });
+    }
+    const deleted = await Session.deleteSession(sessionId);
+    if (deleted) {
+      return res
+        .status(200)
+        .json({
+          success: true,
+          code: 200,
+          message: "Session deleted successfully",
+        });
+    } else {
+      return res
+        .status(500)
+        .json({
+          success: false,
+          code: 500,
+          message: "Failed to delete session",
+        });
+    }
+  } catch (error) {
+    console.log("Error deleting session:", error);
     return res
       .status(500)
       .json({ success: false, code: 500, message: error.message });

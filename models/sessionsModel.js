@@ -22,17 +22,17 @@ class Session {
     const [rows] = await db.query("SELECT * FROM sessions WHERE id = ?", [id]);
     return rows.length ? rows[0] : null;
   }
-  static async createSession(name, start, stop) {
+  static async createSession(name, start_date,  end_date) {
     const [result] = await db.query(
-      "INSERT INTO sessions (name, created_at, updated_at) VALUES (?, NOW(), NOW())",
-      [name, start, stop],
+      "INSERT INTO sessions (name, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
+      [name, start_date, end_date],
     );
     return result.insertId;
   }
-  static async updateSession(id, name) {
+  static async updateSession(id, name, start_date, end_date) {
     const [result] = await db.query(
-      "UPDATE sessions SET name = ?, updated_at = NOW() WHERE id = ?",
-      [name, id],
+      "UPDATE sessions SET name = ?, start_date = ?, end_date = ?, updated_at = NOW() WHERE id = ?",
+      [name, start_date, end_date, id],
     );
     return result.affectedRows > 0;
   }
