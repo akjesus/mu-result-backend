@@ -55,5 +55,11 @@ class Session {
     );
     return rows;
   }
+  static async getSessions() {
+    const [rows] = await db.query(
+      "SELECT * FROM sessions",
+    );
+    return rows;
+  }
 }
 module.exports = Session;

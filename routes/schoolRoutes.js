@@ -8,6 +8,7 @@ router.use(verifyToken); // Protect all routes after this middleware
 router.use(restrictTo("student", "staff", "admin", "superadmin"));
 router.get("/faculties", schoolController.getAllFaculties);
 router.get("/sessions", schoolController.getSessions);
+router.get("/sessions/all", schoolController.getAllSessions);
 router.get("/levels", schoolController.getLevels);
 router.get("/sessions/:id/semesters", schoolController.getSemestersForSession);
 
