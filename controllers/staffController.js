@@ -30,8 +30,18 @@ exports.getStaffById = async (req, res) => {
 };
 
 exports.deleteStaff = async (req, res) => {
-  const staffId = parseInt(req.params.id);
   try {
+    const staffId = parseInt(req.params.id);
+    const staff = await Staff.findById(staffId);
+
+    if (req.user.role !== "superadmin" || staff.role === "superadmin") {
+      return res.status(403).json({
+        success: false,
+        code: 403,
+        message: "You are not allowed to perform this action",
+      });
+    }
+
     const deleted = await Staff.deleteStaff(staffId);
     if (!deleted) {
       return res.status(404).json({
@@ -178,14 +188,16 @@ exports.getMyProfile = async (req, res) => {
 
 exports.changeMyPassword = async (req, res) => {
   const staffId = req.user.id;
-  const { old_password, new_password } = req.body;  
+  const { old_password, new_password } = req.body;
   if (!old_password || !new_password) {
-    return res
-      .status(400)
-      .json({ success: false, code: 400, message: "Old and new passwords are required" });
+    return res.status(400).json({
+      success: false,
+      code: 400,
+      message: "Old and new passwords are required",
+    });
   }
   try {
-    const staff = await Staff.findById(staffId);  
+    const staff = await Staff.findById(staffId);
     if (!staff) {
       return res
         .status(404)
@@ -193,16 +205,20 @@ exports.changeMyPassword = async (req, res) => {
     }
     const isMatch = await bcrypt.compare(old_password, staff.password);
     if (!isMatch) {
-      return res
-        .status(400)
-        .json({ success: false, code: 400, message: "Old password is incorrect" });
-    } 
+      return res.status(400).json({
+        success: false,
+        code: 400,
+        message: "Old password is incorrect",
+      });
+    }
     const hashedPassword = await bcrypt.hash(new_password, 10);
     const updated = await Staff.updatePassword(staffId, hashedPassword);
     if (!updated) {
-      return res
-        .status(500)
-        .json({ success: false, code: 500, message: "Failed to update password" });
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to update password",
+      });
     }
     return res.status(200).json({
       success: true,
@@ -216,4 +232,3 @@ exports.changeMyPassword = async (req, res) => {
       .json({ success: false, code: 500, message: error.message });
   }
 };
-
