@@ -14,7 +14,7 @@ class Student {
   static async findById(id) {
     const [rows] = await db.query(
       `
-      SELECT concat(last_name, ' ', first_name, ' ', other_names) as fullName, 
+      SELECT concat(last_name, ', ', first_name, ' ', other_names) as fullName, 
       email, mat_no as matric, phone, gender,
       IF(blocked, 'true', 'false') AS blocked,
       departments.name as department, photo,
