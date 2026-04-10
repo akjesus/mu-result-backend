@@ -43,6 +43,11 @@ router.post("/approve", resultController.approveResults);
 router.post("/approve/courses", resultController.approveCourses);
 router.post("/approve/courses/toggle", resultController.toggleApproval);
 router.get("/approval/courses", resultController.getResultsForApproval);
+router.post(
+  "/upload-blocklist",
+  upload.single("file"),
+  resultController.bulkUploadResults,
+);
 // Routes accessible only to Super Admin for deleting results
 router.use(restrictTo("superadmin"));
 router.delete("/:id", resultController.deleteResult);

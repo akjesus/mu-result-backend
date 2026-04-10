@@ -816,3 +816,123 @@ exports.toggleApproval = async (req, res) => {
       .json({ success: false, code: 500, message: error.message });
   }
 };
+
+exports.blockResults = async (req, res) => {
+  const { session_id, semester_id } = req.body;
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, code: 400, message: "No file uploaded!" });
+    }
+    const resultsFile = req.file;
+    const csv = require("csv-parser");
+    const stream = require("stream");
+    const results = [];
+    const readableStream = new stream.Readable();
+    readableStream._read = () => {};
+    readableStream.push(resultsFile.buffer);
+    readableStream.push(null);
+    readableStream
+      .pipe(csv())
+      .on("data", (data) => results.push(data))
+      .on("end", async () => {
+        let insertedCount = 0;
+        let errorCount = 0;
+        let errorRows = [];
+        for (const r of results) {
+          const mat_no = r.mat_no;
+          // Check for duplicate
+          try {
+            const [existing] = await Result.findByStudentAndCourse(
+              mat_no,
+              course_id,
+            );
+            if (existing && existing.length > 0) {
+              console.log(`Duplicate found for ${mat_no}, skipping.`);
+              continue;
+            }
+            await Result.createResult(
+              mat_no,
+              course_id,
+              parseFloat(r.cat),
+              parseFloat(r.mid_term),
+              parseFloat(r.exam_score),
+              session_id,
+              semester_id,
+              created_by,
+            );
+            insertedCount++;
+          } catch (error) {
+            errorCount++;
+            errorRows.push({ row: r, error: error.message });
+            console.log(`Error inserting row for ${mat_no}:`, error.message);
+            continue;
+          }
+        }
+        console.log(
+          `Bulk upload finished: ${insertedCount} inserted, ${errorCount} errors.`,
+        );
+        if (errorCount > 0) {
+          return res.status(200).json({
+            success: true,
+            code: 200,
+            message: `${insertedCount} results uploaded, ${errorCount} errors (see server logs for details)`,
+            errors: errorRows,
+          });
+        }
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          message: `${insertedCount} results uploaded successfully (duplicates skipped)`,
+        });
+      })
+      .on("error", (err) => {
+        console.log("Error parsing CSV:", err.message);
+        return res.status(500).json({
+          success: false,
+          code: 500,
+          message: "Error parsing CSV file",
+        });
+      });
+  } catch (error) {
+    console.log("Error uploading results:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+
+  if (!session_id || !semester_id) {
+    return res.status(400).json({
+      success: false,
+      code: 400,
+      message: "Session and Semester are required!",
+    });
+  }
+  try {
+    const blocked = await Result.blockResult(
+      session_id,
+      semester_id,
+      department_id,
+      level_id,
+    );
+    if (!blocked) {
+      return res.status(404).json({
+        success: false,
+        code: 404,
+        message: "No results found to block or already blocked",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      code: 200,
+      message: "Results blocked successfully",
+    });
+  } catch (error) {
+    console.log("Error blocking results:", error.message);
+    return res
+
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
