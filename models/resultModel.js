@@ -564,7 +564,7 @@ class Result {
        WHERE mat_no = ? AND session_id = ? AND semester_id = ?`,
       [mat_no, session_id, semester_id]
     );
-    return result;
+    return result.changedRows > 0 ? true : false;
   }
 
 }

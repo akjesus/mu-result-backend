@@ -58,7 +58,7 @@ class Student {
     password,
   ) {
     const [result] = await db.query(
-      `INSERT INTO students (department_id, level_id, first_name, last_name, other_names,email, mat_no, password, created_at, updated_at, role, blocked)
+      `INSERT INTO students (department_id, level_id, first_name, last_name, other_names, email, mat_no, password, created_at, updated_at, role, blocked)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
       [
         department,

@@ -12,7 +12,7 @@ exports.getAllStudents = async (req, res) => {
   const level = parseInt(req.query.level) || null;
   try {
     const offset = (page - 1) * limit;
-    let query = `SELECT  first_name, last_name, 
+    let query = `SELECT  first_name, last_name, other_names,
     email, mat_no as matric, username,
     departments.name AS department, levels.name AS level,
     faculties.name AS school, faculties.id AS schoolId
@@ -90,9 +90,9 @@ exports.createStudent = async (req, res) => {
       department,
       level,
       first_name,
+      other_names,
       last_name,
       email,
-      username,
       matric,
     } = req.body;
 
@@ -100,9 +100,9 @@ exports.createStudent = async (req, res) => {
       !department ||
       !level ||
       !first_name ||
+      !other_names ||
       !last_name ||
       !email ||
-      !username ||
       !matric
     ) {
       return res.status(400).json({
@@ -124,9 +124,9 @@ exports.createStudent = async (req, res) => {
       level,
       first_name,
       last_name,
+      other_names,
       email,
       matric,
-      username,
       password,
     );
     return res.status(201).json({

@@ -306,14 +306,14 @@ exports.bulkUploadResults = async (req, res) => {
           return res.status(200).json({
             success: true,
             code: 200,
-            message: `${insertedCount} results uploaded, ${errorCount} errors (see server logs for details)`,
+            message: `${insertedCount} results uploaded , ${errorCount} errors (see server logs for details)`,
             errors: errorRows,
           });
         }
         return res.status(200).json({
           success: true,
           code: 200,
-          message: `${insertedCount} results uploaded successfully (duplicates skipped)`,
+          message: `${insertedCount} results uploaded successfully!`,
         });
       })
       .on("error", (err) => {
@@ -366,6 +366,7 @@ exports.getResultsByStudent = async (req, res) => {
                 AND results.semester_id = ?
                 AND courses.level_id = ? 
                 AND results.approved = 1 
+                AND results.blocked = 0
                 AND results.is_deleted = 0`,
       [mat_no, session, semester, level],
     );
@@ -604,7 +605,7 @@ exports.getallResultsforDepartment = async (req, res) => {
     const [results] = await db.query(
       `SELECT 
                 students.mat_no as matric,
-                CONCAT(students.last_name, ' ', students.first_name, ' ', students.other_names) AS student_name,
+                CONCAT(students.last_name, ', ', students.first_name, ' ', students.other_names) AS student_name,
                 departments.name AS department_name,
                 levels.name AS level_name,
                 sessions.name AS session_name,
@@ -849,15 +850,16 @@ exports.blockResults = async (req, res) => {
         let errorRows = [];
         for (const r of blockList) {
           const mat_no = r.mat_no;
-          // Check for duplicate
           try {
-            await Result.blockResult(mat_no, session_id, semester_id);
-            insertedCount++;
+            const blocked = await Result.blockResult(mat_no, session_id, semester_id);
+            if (blocked) {
+              blockedCount++;
+            }
           } catch (error) {
             errorCount++;
             errorRows.push({ row: r, error: error.message });
             console.log(
-              `Error blocking result  row for ${mat_no}:`,
+              `Error blocking result row for ${mat_no}:`,
               error.message,
             );
             continue;
@@ -866,19 +868,20 @@ exports.blockResults = async (req, res) => {
         console.log(
           `Block finished: ${blockedCount} blocked, ${errorCount} errors.`,
         );
-        if (errorCount > 0) {
-          return res.status(200).json({
-            success: true,
-            code: 200,
+        if (errorCount > 0 || blockedCount === 0) {
+          return res.status(202).json({
+            success: false,
+            code: 202,
             message: `${blockedCount} results blocked, ${errorCount} errors (see server logs for details)`,
             errors: errorRows,
           });
+        } else {
+          return res.status(200).json({
+            success: true,
+            code: 200,
+            message: `${blockedCount} results blocked successfully`,
+          });
         }
-        return res.status(200).json({
-          success: true,
-          code: 200,
-          message: `${blockedCount} results blocked successfully (duplicates skipped)`,
-        });
       })
       .on("error", (err) => {
         console.log("Error parsing CSV:", err.message);
