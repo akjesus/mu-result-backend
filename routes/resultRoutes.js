@@ -46,7 +46,7 @@ router.get("/approval/courses", resultController.getResultsForApproval);
 router.post(
   "/upload-blocklist",
   upload.single("file"),
-  resultController.bulkUploadResults,
+  resultController.blockResults,
 );
 // Routes accessible only to Super Admin for deleting results
 router.use(restrictTo("superadmin"));
