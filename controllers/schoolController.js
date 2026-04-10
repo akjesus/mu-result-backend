@@ -66,6 +66,24 @@ exports.deleteFaculty = async (req, res) => {
       .json({ success: false, code: 500, message: error.message });
   }
 };
+
+exports.updateFaculty = async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  try {
+    await Faculty.updateFaculty(id, name);
+    return res.status(200).json({
+      success: true,
+      code: 200,
+      message: "Faculty updated Successfully!",
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
 // Get a single department by ID
 exports.getDepartmentById = async (req, res) => {
   const departmentId = parseInt(req.params.id);
@@ -213,7 +231,6 @@ exports.getSessions = async (req, res) => {
         .status(404)
         .json({ success: false, code: 404, message: "No sessions found" });
     }
-    console.log(sessions);
     return res.status(200).json({ success: true, code: 200, sessions });
   } catch (error) {
     console.log("Error fetching sessions:", error);
@@ -242,7 +259,6 @@ exports.getLevels = async (req, res) => {
 
 exports.getSemestersForSession = async (req, res) => {
   const sessionId = parseInt(req.params.id);
-  console.log("Fetching semesters for session ID:", sessionId);
   try {
     const semesters = await Session.getSemestersForSession(sessionId);
     if (!semesters) {
@@ -340,21 +356,17 @@ exports.updateSession = async (req, res) => {
       end_date,
     );
     if (updated) {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          code: 200,
-          message: "Session updated successfully",
-        });
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Session updated successfully",
+      });
     } else {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          code: 500,
-          message: "Failed to update session",
-        });
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to update session",
+      });
     }
   } catch (error) {
     console.log("Error updating session:", error);
@@ -375,26 +387,41 @@ exports.deleteSession = async (req, res) => {
     }
     const deleted = await Session.deleteSession(sessionId);
     if (deleted) {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          code: 200,
-          message: "Session deleted successfully",
-        });
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Session deleted successfully",
+      });
     } else {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          code: 500,
-          message: "Failed to delete session",
-        });
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to delete session",
+      });
     }
   } catch (error) {
     console.log("Error deleting session:", error);
     return res
       .status(500)
       .json({ success: false, code: 500, message: error.message });
+  }
+};
+
+exports.getAllSemestersWithSessions = async (req, res) => {
+  try {
+    const semesters = await Semester.getAllSemestersWithSessions();
+    const sessions = semesters
+      .map((semester, index) => {
+        return {
+          id:index,
+          session_id: semester.session_id,
+          session_name: semester.session_name,
+        };
+      })
+      .flat();
+    return res.status(200).json({ success: true, semesters, sessions });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 };

@@ -14,7 +14,6 @@ class Course {
     level_id,
     semester_id,
     credit_load,
-    active,
   ) {
     const semester = semester_id === 1 ? "First" : "Second";
     console.log(
@@ -24,13 +23,12 @@ class Course {
       level_id,
       semester_id,
       credit_load,
-      active,
       semester,
     );
     const [result] = await db.query(
       `INSERT INTO courses 
-      (name, code, department_id, level_id, semester_id, semester,credit_load, active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      (name, code, department_id, level_id, semester_id, semester,credit_load, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         name,
         code,
@@ -39,7 +37,6 @@ class Course {
         semester_id,
         semester,
         credit_load,
-        active,
       ],
     );
     return result.insertId;
@@ -64,12 +61,11 @@ class Course {
     name,
     code,
     credit_load,
-    active,
   ) {
     const [result] = await db.query(
       `UPDATE courses 
        SET name = ?, code = ?, department_id = ?, level_id = ?, 
-       semester_id = ?, credit_load = ?, active = ? WHERE id = ?`,
+       semester_id = ?, credit_load = ? WHERE id = ?`,
       [
         name,
         code,
@@ -77,7 +73,6 @@ class Course {
         level_id,
         semester_id,
         credit_load,
-        active,
         courseId,
       ],
     );

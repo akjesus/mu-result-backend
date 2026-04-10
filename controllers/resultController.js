@@ -40,7 +40,7 @@ exports.getAllResults = async (req, res) => {
       ? "WHERE " + whereClauses.join(" AND ")
       : "";
     let query = `SELECT (results.cat + results.mid_term + results.exam_score) as total_score, 
-            results.grade, CONCAT(students.first_name,' ', students.last_name)as student_name, 
+            results.grade, CONCAT(students.last_name, ' ' , students.first_name,' ', students.other_names)as student_name, 
             courses.name AS course, semesters.name AS semester,
             sessions.name AS session, departments.name AS department, levels.name AS level
             FROM results
@@ -353,7 +353,7 @@ exports.getResultsByStudent = async (req, res) => {
     }
     const [results] = await db.query(
       `SELECT results.id, results.course_id, courses.code as code, courses.name AS title, students.first_name, 
-                students.last_name, students.mat_no, 
+                students.last_name, students.other_names, students.mat_no, 
                 results.cat + results.mid_term + results.exam_score AS total_score, results.grade,
                 courses.credit_load as credit, semesters.name as semester, sessions.name as session
                 FROM results
@@ -392,10 +392,9 @@ exports.getResultsByDepartment = async (req, res) => {
     const departmentId = req.params.id;
     const [results] = await db.query(
       `SELECT  results.id, departments.name as department_name, courses.name AS course_name, 
-            students.first_name, students.last_name, 
-                    students.mat_no,    
-                    results.cat + results.mid_term + results.exam_score AS total_score, results.grade,
-                    courses.credit_load
+            students.first_name, students.last_name, students.other_names, students.mat_no,  
+            results.cat + results.mid_term + results.exam_score AS total_score, results.grade,
+            courses.credit_load
              FROM results
              JOIN courses ON results.course_id = courses.id
              JOIN students ON results.mat_no = students.mat_no
@@ -417,7 +416,7 @@ exports.getResultsByCourse = async (req, res) => {
     const courseId = req.params.id;
     const [results] = await db.query(
       `SELECT results.id,  courses.name AS course_name, students.first_name, 
-            students.last_name, students.mat_no, results.cat, results.mid_term, results.exam_score,
+            students.last_name, students.othet_names, students.mat_no, results.cat, results.mid_term, results.exam_score,
             results.cat + results.mid_term + results.exam_score AS total_score, results.grade
              FROM results
              JOIN courses ON results.course_id = courses.id
@@ -444,10 +443,10 @@ exports.getResultsByDepartmentAndLevel = async (req, res) => {
     }
     const [results] = await db.query(
       `SELECT  results.id, departments.name as department_name, courses.name AS course_name,
-            students.first_name, students.last_name, 
-                    students.mat_no, results.cat, results.mid_term, results.exam_score,
-                    results.cat + results.mid_term + results.exam_score AS total_score, results.grade,       
-                    courses.credit_load
+            students.first_name, students.last_name, students.other_names, students.mat_no, 
+            results.cat, results.mid_term, results.exam_score,
+            results.cat + results.mid_term + results.exam_score AS total_score, results.grade,       
+             courses.credit_load
              FROM results
              JOIN courses ON results.course_id = courses.id 
                 JOIN students ON results.mat_no = students.mat_no
@@ -605,7 +604,7 @@ exports.getallResultsforDepartment = async (req, res) => {
     const [results] = await db.query(
       `SELECT 
                 students.mat_no as matric,
-                CONCAT(students.first_name, ' ', students.last_name) AS student_name,
+                CONCAT(students.last_name, ' ', students.first_name, ' ', students.other_names) AS student_name,
                 departments.name AS department_name,
                 levels.name AS level_name,
                 sessions.name AS session_name,
@@ -636,7 +635,7 @@ exports.getallResultsforDepartment = async (req, res) => {
             AND results.session_id = ?
             AND results.semester_id = ?
             AND results.is_deleted = 0
-            GROUP BY students.mat_no, students.first_name, students.last_name, departments.name, levels.name
+            GROUP BY students.mat_no, students.first_name, students.last_name, students.other_names, departments.name, levels.name
             ORDER BY students.mat_no ASC`,
       [departmentId, session, semester],
     );

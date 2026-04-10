@@ -14,8 +14,8 @@ class Student {
   static async findById(id) {
     const [rows] = await db.query(
       `
-      SELECT concat(first_name, ' ', last_name) as fullName, 
-      email, username, mat_no as matric, phone,
+      SELECT concat(last_name, ' ', first_name, ' ', other_names) as fullName, 
+      email, mat_no as matric, phone, gender,
       IF(blocked, 'true', 'false') AS blocked,
       departments.name as department, photo,
       levels.name as level,
@@ -32,8 +32,8 @@ class Student {
   static async findByIdPass(id) {
     const [rows] = await db.query(
       `
-      SELECT students.id, concat(first_name, ' ', last_name) as fullName, 
-      email, username, mat_no as matric, password,
+      SELECT students.id, concat(last_name, ' ', first_name, ' ', other_names) as fullName, 
+      email, mat_no as matric, password,
       IF(blocked, 'true', 'false') AS blocked,
       departments.name as department,
       levels.name as level,
@@ -52,22 +52,22 @@ class Student {
     level,
     first_name,
     last_name,
+    other_names,
     email,
     matric,
-    username,
     password,
   ) {
     const [result] = await db.query(
-      `INSERT INTO students (department_id, level_id, first_name, last_name, email, mat_no, username, password, created_at, updated_at, role, blocked)
+      `INSERT INTO students (department_id, level_id, first_name, last_name, other_names,email, mat_no, password, created_at, updated_at, role, blocked)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
       [
         department,
         level,
         first_name,
         last_name,
+        other_names,
         email,
         matric,
-        username,
         password,
         "student",
         0,
@@ -82,11 +82,23 @@ class Student {
     );
     return result.affectedRows > 0;
   }
-  static async changePassword(password, id) {
-    const [result] = await db.query(
-      `UPDATE students SET password = ?, updated_at = NOW() WHERE id = ?`,
-      [password, id],
-    );
+  static async changeSettings(id, updates) {
+    let query = "UPDATE students SET ";
+    const params = [];
+
+    // Dynamically build the query based on provided fields
+    Object.keys(updates).forEach((key, index) => {
+      query += `${key} = ?`;
+      if (index < Object.keys(updates).length - 1) {
+        query += ", ";
+      }
+      params.push(updates[key]);
+    });
+
+    query += ", updated_at = NOW() WHERE id = ?";
+    params.push(id);
+
+    const [result] = await db.query(query, params);
     return result.affectedRows > 0;
   }
   static async resetPassword(user, password) {

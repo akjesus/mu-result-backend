@@ -312,7 +312,7 @@ class Result {
   static async getHighestandLowestCGPA() {
     const [rows] = await db.query(`
       SELECT
-        r.mat_no, s.first_name, s.last_name, d.name AS department,
+        r.mat_no, s.first_name, s.last_name, s.other_names, d.name AS department,
         (SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -329,14 +329,14 @@ class Result {
       JOIN departments d ON s.department_id = d.id
       JOIN courses c ON r.course_id = c.id
       WHERE r.is_deleted = 0
-      GROUP BY r.mat_no, s.first_name, s.last_name, department
+      GROUP BY r.mat_no, s.first_name, s.last_name, s.other_names, department
       ORDER BY cgpa DESC
       LIMIT 1
     `);
     const highestCGPA = rows.length ? rows[0] : null;
     const [lowRows] = await db.query(`
       SELECT
-        r.mat_no,  s.first_name, s.last_name, d.name AS department,
+        r.mat_no,  s.first_name, s.last_name, s.other_names, d.name AS department,
         (SUM(
           CASE r.grade
             WHEN 'A' THEN 5.0
@@ -353,7 +353,7 @@ class Result {
       JOIN departments d ON s.department_id = d.id
       JOIN courses c ON r.course_id = c.id
       WHERE r.is_deleted = 0
-      GROUP BY r.mat_no, s.first_name, s.last_name, department
+      GROUP BY r.mat_no, s.first_name, s.last_name, s.other_names, department
       ORDER BY cgpa ASC
       LIMIT 1
     `);

@@ -7,7 +7,6 @@ exports.getAllCourses = async (req, res) => {
   const limit = parseInt(req.query.limit) || null;
   const offset = (page - 1) * limit;
   let query = `SELECT courses.id as id, courses.name as title, courses.code, courses.credit_load as credit,
-            courses.active AS active,
             departments.name AS departments, levels.name AS level, semesters.name AS semester,
             departments.id AS departmentId, levels.id AS levelId, semesters.id AS semester_id
             FROM courses
@@ -47,8 +46,7 @@ exports.getCourseById = async (req, res) => {
     const [courses] = await db.query(
       `
             SELECT courses.name, courses.code, courses.credit_load,  courses.created_at,
-            courses.updated_at, departments.name AS department, levels.name AS level, semesters.name AS semester,
-            IF(courses.active, 'true', 'false') AS active
+            courses.updated_at, departments.name AS department, levels.name AS level, semesters.name AS semester
             FROM courses
             JOIN departments ON courses.department_id = departments.id
             JOIN levels ON courses.level_id = levels.id
@@ -74,15 +72,8 @@ exports.getCourseById = async (req, res) => {
 };
 // Create a new course
 exports.createCourse = async (req, res) => {
-  const {
-    name,
-    code,
-    department_id,
-    level_id,
-    semester_id,
-    credit_load,
-    active,
-  } = req.body;
+  const { name, code, department_id, level_id, semester_id, credit_load } =
+    req.body;
   try {
     if (
       !name ||
@@ -90,8 +81,7 @@ exports.createCourse = async (req, res) => {
       !department_id ||
       !level_id ||
       !semester_id ||
-      !credit_load ||
-      !active
+      !credit_load
     ) {
       return res.status(400).json({
         success: false,
@@ -106,7 +96,6 @@ exports.createCourse = async (req, res) => {
       level_id,
       semester_id,
       credit_load,
-      active,
     );
     // Fetch the newly created course with joined fields
     const [courses] = await db.query(
@@ -137,15 +126,8 @@ exports.createCourse = async (req, res) => {
 // Update an existing course
 exports.updateCourse = async (req, res) => {
   const courseId = parseInt(req.params.id);
-  const {
-    department_id,
-    level_id,
-    semester_id,
-    name,
-    code,
-    credit_load,
-    active,
-  } = req.body;
+  const { department_id, level_id, semester_id, name, code, credit_load } =
+    req.body;
   try {
     const [courses] = await db.query(`SELECT * FROM courses WHERE id = ?`, [
       courseId,
@@ -163,7 +145,6 @@ exports.updateCourse = async (req, res) => {
       name,
       code,
       credit_load,
-      active,
     );
     if (!updated) {
       return res.status(500).json({
@@ -174,8 +155,8 @@ exports.updateCourse = async (req, res) => {
     }
     // Fetch the updated course with joined fields
     const [updatedCourses] = await db.query(
-      `
-            SELECT courses.*, departments.name AS department_name, levels.name AS level_name, semesters.name AS semester_name
+      `SELECT courses.*, departments.name AS department_name, 
+            levels.name AS level_name, semesters.name AS semester_name
             FROM courses
             JOIN departments ON courses.department_id = departments.id
             JOIN levels ON courses.level_id = levels.id

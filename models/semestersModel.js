@@ -45,5 +45,15 @@ class Semester {
     );
     return rows;
   }
+  static async getAllSemestersWithSessions() {
+    const [rows] = await db.query(
+      `select semesters.id, semesters.name as semester_name, semesters.session_id, 
+      sessions.id as session_id, 
+      sessions.name as session_name
+      FROM semesters
+      JOIN sessions ON semesters.session_id = sessions.id `
+    )
+    return rows;
+  }
 }
 module.exports = Semester;

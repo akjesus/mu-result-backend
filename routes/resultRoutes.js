@@ -6,7 +6,6 @@ const verifyToken = require("../controllers/authController").verifyToken;
 const restrictTo = require("../controllers/authController").restrictTo;
 
 router.use(verifyToken);
-// Routes accessible to all authenticated users (students, staff, etc.)
 router.use(
   restrictTo("superadmin", "admin", "staff", "student", "hod", "dean"),
 );

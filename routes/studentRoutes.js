@@ -4,7 +4,7 @@ const restrictTo = require("../controllers/authController").restrictTo;
 const verifyToken = require("../controllers/authController").verifyToken;
 const studentController = require("../controllers/studentController");
 const {getResultsByStudent, getAllResultsForStudent, getCurrentGPA} = require("../controllers/resultController");
-const { changeStudentPassword } = require("../controllers/authController");
+const { changeStudentSettings } = require("../controllers/authController");
 
 const multer = require("multer")
 const upload = multer()
@@ -12,11 +12,11 @@ const upload = multer()
 router.use(verifyToken);
 router.use(restrictTo("superadmin", "admin", "staff", "student"));
 router.get("/profile", studentController.getMyProfile);
-router.post("/update-picture", upload.single("file"), studentController.updateProfilePicture);
+router.post("/profile-image",studentController.updateProfilePicture);
 router.get("/result", getResultsByStudent);
 router.get("/gpa", getCurrentGPA);
 router.get("/all-results", getAllResultsForStudent);
-router.post("/change-password", changeStudentPassword);
+router.post("/change-settings", changeStudentSettings);
 
 
 router.use(restrictTo("admin", "staff", "superadmin"));

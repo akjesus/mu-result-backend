@@ -15,6 +15,7 @@ router.delete("/sessions/:id", schoolController.deleteSession);
 
 router.get("/levels", schoolController.getLevels);
 router.get("/sessions/:id/semesters", schoolController.getSemestersForSession);
+router.get("/semesters/sessions", schoolController.getAllSemestersWithSessions);
 
 router.use(restrictTo("staff", "admin", "superadmin"));
 router.get("/departments", schoolController.getAllDepartments);
@@ -25,6 +26,7 @@ router.post("/faculties", schoolController.createFaculty);
 router.get("/faculties/:id", schoolController.getFacultyById);
 
 router.use(restrictTo("admin", "superadmin"));
+router.put("/faculties/:id", schoolController.updateFaculty);
 router.post("/semesters/:id/activate", schoolController.activateSemester);
 router.delete("/faculties/:id", schoolController.deleteFaculty);
 router.delete("/departments/:id", schoolController.deleteDepartment);

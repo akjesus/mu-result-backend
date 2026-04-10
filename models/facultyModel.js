@@ -26,7 +26,7 @@ class Faculty {
              SET name = ?
              WHERE id = ?
             `,
-      [id, name],
+      [name, id],
     );
     return result.affectedRows > 0;
   }

@@ -251,8 +251,9 @@ exports.restrictTo =
     next();
   };
 
-exports.changeStudentPassword = async (req, res) => {
+exports.changeStudentSettings = async (req, res) => {
   try {
+    let updatedFields = {};
     const student = await Student.findByIdPass(req.user.id);
     if (!student) {
       return res
@@ -260,33 +261,31 @@ exports.changeStudentPassword = async (req, res) => {
         .json({ success: false, code: 404, message: "No student found" });
     }
 
-    const { old_password, new_password, new_password_confirm } = req.body;
-    if (!old_password || !new_password || !new_password_confirm) {
-      return res.status(400).json({
-        success: false,
-        code: 400,
-        message: "All password fields required",
-      });
+    const { old_password, new_password, new_password_confirm, gender, phone } =
+      req.body;
+    if (old_password && new_password && new_password_confirm) {
+      const passwordMatch = bcrypt.compare(old_password, student.password);
+      if (!passwordMatch) {
+        return res.status(403).json({
+          success: false,
+          code: 403,
+          message: "Old password is not correct!",
+        });
+      }
+      const hashedPassword = await bcrypt.hash(new_password, 10);
+      updatedFields.password = hashedPassword;
+      if (gender) updatedFields.gender = gender;
+      if (phone) updatedFields.phone = phone;
+    } else {
+      if (gender) updatedFields.gender = gender;
+      if (phone) updatedFields.phone = phone;
     }
-    if (new_password !== new_password_confirm) {
-      return res
-        .status(400)
-        .json({ success: false, code: 500, message: "Passwords must match" });
-    }
-    //verify old password
-    const passwordMatch = bcrypt.compare(old_password, student.password);
-    if (!passwordMatch) {
-      return res.status(403).json({
-        success: false,
-        code: 403,
-        message: "Old password is not correct!",
-      });
-    }
-    const change = await Student.changePassword(new_password, student.id);
+    const change = await Student.changeSettings(student.id, updatedFields);
+
     return res.status(201).json({
       success: true,
       code: 201,
-      message: "password changed successfully",
+      message: "Settings changed successfully",
       changed: change,
     });
   } catch (error) {
