@@ -269,9 +269,21 @@ exports.bulkUploadResults = async (req, res) => {
         let insertedCount = 0;
         let errorCount = 0;
         let errorRows = [];
+        //confirm that the CSV has the required columns: mat_no, cat, mid_term, exam_score
+        // const requiredColumns = ["mat_no", "cat", "mid_term", "exam_score"];
+        // const missingColumns = requiredColumns.filter(
+        //   (col) => !Object.keys(results[0]).includes(col),
+        // );
+        // if (missingColumns.length > 0) {
+        //   return res.status(400).json({
+        //     success: false,
+        //     code: 400,
+        //     message: `Missing columns in CSV: ${missingColumns.join(", ")}`,
+        //   });
+        // }
+
         for (const r of results) {
           const mat_no = r.mat_no;
-          // Check for duplicate
           try {
             const [existing] = await Result.findByStudentAndCourse(
               mat_no,
@@ -281,7 +293,7 @@ exports.bulkUploadResults = async (req, res) => {
               console.log(`Duplicate found for ${mat_no}, skipping.`);
               continue;
             }
-            await Result.createResult(
+            const inserted = await Result.createResult(
               mat_no,
               course_id,
               parseFloat(r.cat),
@@ -291,7 +303,11 @@ exports.bulkUploadResults = async (req, res) => {
               semester_id,
               created_by,
             );
-            insertedCount++;
+
+            if (inserted) {
+              insertedCount++;
+              console.log(inserted);
+            }
           } catch (error) {
             errorCount++;
             errorRows.push({ row: r, error: error.message });
@@ -303,18 +319,19 @@ exports.bulkUploadResults = async (req, res) => {
           `Bulk upload finished: ${insertedCount} inserted, ${errorCount} errors.`,
         );
         if (errorCount > 0) {
-          return res.status(200).json({
+          return res.status(202).json({
             success: true,
-            code: 200,
+            code: 202,
             message: `${insertedCount} results uploaded , ${errorCount} errors (see server logs for details)`,
             errors: errorRows,
           });
+        } else {
+          return res.status(200).json({
+            success: true,
+            code: 200,
+            message: `${insertedCount} results uploaded successfully!`,
+          });
         }
-        return res.status(200).json({
-          success: true,
-          code: 200,
-          message: `${insertedCount} results uploaded successfully!`,
-        });
       })
       .on("error", (err) => {
         console.log("Error parsing CSV:", err.message);

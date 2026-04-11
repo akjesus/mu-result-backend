@@ -39,8 +39,8 @@ class Result {
     try {
       const [result] = await db.query(
         `INSERT INTO results
-          (mat_no, course_id, cat, mid_term, exam_score, session_id, semester_id, grade, created_at, updated_at, created_by, is_deleted)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
+          (mat_no, course_id, cat, mid_term, exam_score, session_id, semester_id,  approved, blocked,grade, created_at, updated_at, created_by, is_deleted)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
         [
           mat_no,
           course_id,
@@ -49,12 +49,14 @@ class Result {
           exam_score,
           session_id,
           semester_id,
+          0,
+          0,
           grade,
           created_by,
           0,
         ],
       );
-      return result.insertId;
+      return result.affectedRows > 0 ? true: false;
     } catch (error) {
       console.log("Error creating result:", error);
       return error;

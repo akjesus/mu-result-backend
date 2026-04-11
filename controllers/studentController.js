@@ -451,9 +451,9 @@ exports.getStudentsByDepartment = async (req, res) => {
   try {
     let query = `
       SELECT students.id as id, concat(last_name, ', ', first_name, ' ', other_names) as name,
-      first_name, last_name, other_names, mat_no as matric,
-      email, departments.name as department, departments.id as departmentId,
-      faculties.name as school, faculties.id as schoolId, levels.name as level, levels.id as levelId
+      first_name, last_name, other_names, mat_no as matric, email, 
+      departments.id as departmentId, 
+      faculties.id as schoolId, levels.id as levelId
       FROM students
       JOIN departments ON students.department_id = departments.id
       JOIN faculties ON departments.faculty_id = faculties.id

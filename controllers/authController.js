@@ -25,7 +25,11 @@ exports.login = async (req, res) => {
     if (!user) {
       return res
         .status(401)
-        .json({ success: false, code: 401, message: "Invalid Username" });
+        .json({
+          success: false,
+          code: 401,
+          message: "No account found with that email/matriculation number",
+        });
     }
     if (!user.password) {
       return res.status(500).json({
@@ -41,7 +45,7 @@ exports.login = async (req, res) => {
       if (!rawPassword) {
         return res
           .status(401)
-          .json({ success: false, code: 401, message: "Invalid Password" });
+          .json({ success: false, code: 401, message: "Wrong Password" });
       }
     }
     // Generate JWT token
@@ -134,7 +138,7 @@ exports.studentLogin = async (req, res) => {
     // Verify password against hashed password
     const passwordMatch = await bcrypt.compare(password, student.password);
     if (!passwordMatch) {
-      return res.status(401).json({ error: "Invalid Password" });
+      return res.status(401).json({ error: "Wrong Password" });
     }
 
     // Generate JWT token
