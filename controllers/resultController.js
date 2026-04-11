@@ -270,17 +270,17 @@ exports.bulkUploadResults = async (req, res) => {
         let errorCount = 0;
         let errorRows = [];
         //confirm that the CSV has the required columns: mat_no, cat, mid_term, exam_score
-        // const requiredColumns = ["mat_no", "cat", "mid_term", "exam_score"];
-        // const missingColumns = requiredColumns.filter(
-        //   (col) => !Object.keys(results[0]).includes(col),
-        // );
-        // if (missingColumns.length > 0) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     code: 400,
-        //     message: `Missing columns in CSV: ${missingColumns.join(", ")}`,
-        //   });
-        // }
+        const requiredColumns = ["mat_no", "cat", "mid_term", "exam_score"];
+        const missingColumns = requiredColumns.filter(
+          (col) => !Object.keys(results[0]).includes(col),
+        );
+        if (missingColumns.length > 0) {
+          return res.status(400).json({
+            success: false,
+            code: 400,
+            message: `Missing columns in CSV: ${missingColumns.join(", ")}`,
+          });
+        }
 
         for (const r of results) {
           const mat_no = r.mat_no;
@@ -306,7 +306,6 @@ exports.bulkUploadResults = async (req, res) => {
 
             if (inserted) {
               insertedCount++;
-              console.log(inserted);
             }
           } catch (error) {
             errorCount++;
