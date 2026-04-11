@@ -287,26 +287,50 @@ exports.bulkUploadStudents = async (req, res) => {
       .pipe(csv())
       .on("data", (data) => students.push(data))
       .on("end", async () => {
+        const requiredColumns = [
+          "department_id",
+          "level_id",
+          "first_name",
+          "last_name",
+          "other_names",
+          "email",
+          "mat_no",
+        ];
+        const missingColumns = requiredColumns.filter(
+          (col) => !Object.keys(students[0]).includes(col),
+        );
+        if (missingColumns.length > 0) {
+          return res.status(400).json({
+            success: false,
+            code: 400,
+            message: `Missing columns in CSV: ${missingColumns.join(", ")}`,
+          });
+        }
         let insertedCount = 0;
         let errorCount = 0;
         let errorRows = [];
+        let  duplicateCount = 0;
+        let duplicateRows = [];
         for (const s of students) {
           const mat_no = s.mat_no;
           // Check for duplicate
           try {
             const existing = await Student.findByMatNo(mat_no);
             if (existing) {
+              duplicateCount++;
+              duplicateRows.push({ row: s, error: "Duplicate matric number" });
               console.log(`Duplicate found for ${mat_no}, skipping.`);
-              continue; // Skip duplicates
+              continue; 
+              
             }
             await Student.createStudent(
               s.department_id,
               s.level_id,
               s.first_name,
               s.last_name,
+              s.other_names,
               s.email,
               s.mat_no,
-              s.username,
               password,
             );
             insertedCount++;
@@ -324,14 +348,16 @@ exports.bulkUploadStudents = async (req, res) => {
           return res.status(200).json({
             success: true,
             code: 200,
-            message: `${insertedCount} students uploaded, ${errorCount} errors (see server logs for details)`,
+            message: `${insertedCount} students uploaded, ${duplicateCount} duplicates, ${errorCount} errors (see server logs for details)`,
             errors: errorRows,
+            duplicates: duplicateRows,
           });
         }
         return res.status(200).json({
           success: true,
           code: 200,
-          message: `${insertedCount} students uploaded successfully (duplicates skipped)`,
+          message: `${insertedCount} students uploaded successfully ( ${duplicateCount} duplicates skipped)`,
+          duplicates: duplicateRows,
         });
       })
       .on("error", (err) => {
