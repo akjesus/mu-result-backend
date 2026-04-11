@@ -268,7 +268,10 @@ exports.bulkUploadResults = async (req, res) => {
       .on("end", async () => {
         let insertedCount = 0;
         let errorCount = 0;
+        let duplicateCount = 0;
+        let duplicateRows = [];
         let errorRows = [];
+
         //confirm that the CSV has the required columns: mat_no, cat, mid_term, exam_score
         const requiredColumns = ["mat_no", "cat", "mid_term", "exam_score"];
         const missingColumns = requiredColumns.filter(
@@ -290,6 +293,11 @@ exports.bulkUploadResults = async (req, res) => {
               course_id,
             );
             if (existing && existing.length > 0) {
+              duplicateCount++;
+              duplicateRows.push({
+                row: r,
+                message: "Duplicate result for this student and course",
+              });
               console.log(`Duplicate found for ${mat_no}, skipping.`);
               continue;
             }
@@ -315,20 +323,23 @@ exports.bulkUploadResults = async (req, res) => {
           }
         }
         console.log(
-          `Bulk upload finished: ${insertedCount} inserted, ${errorCount} errors.`,
+          `Bulk upload finished: ${insertedCount} inserted, ${duplicateCount} duplicates, ${errorCount} errors.`,
         );
         if (errorCount > 0) {
           return res.status(202).json({
             success: true,
             code: 202,
-            message: `${insertedCount} results uploaded , ${errorCount} errors (see server logs for details)`,
+            message: `${insertedCount} results uploaded , ${duplicateCount} duplicates, ${errorCount} errors (see server logs for details)`,
             errors: errorRows,
+            duplicates: duplicateRows,
           });
         } else {
           return res.status(200).json({
             success: true,
             code: 200,
-            message: `${insertedCount} results uploaded successfully!`,
+            message: `${insertedCount} results uploaded , ${duplicateCount} duplicates, ${errorCount} errors (see server logs for details)`,
+            duplicates: duplicateRows,
+            errors: errorRows,
           });
         }
       })
