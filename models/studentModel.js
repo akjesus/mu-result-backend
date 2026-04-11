@@ -9,13 +9,12 @@ class Student {
       `SELECT * FROM students WHERE LOWER(mat_no) = ? or email = ?`,
       [username.toLowerCase(), username.toLowerCase()],
     );
-    console.log(rows)
     return rows[0];
   }
-  static async findByEmailAndMatric(email, matric) {
+  static async findByEmailAndMatric(email, mat_no) {
     const [rows] = await db.query(
       `SELECT * FROM students WHERE LOWER(email) = ? OR LOWER(mat_no) = ?`, 
-      [email.toLowerCase(), matric.toLowerCase()],
+      [email.toLowerCase(), mat_no.toLowerCase()],
     );
     return rows[0];
   }
@@ -56,26 +55,26 @@ class Student {
     return rows.length ? rows[0] : null;
   }
   static async createStudent(
-    department,
-    level,
+    department_id,
+    level_id,
     first_name,
     last_name,
     other_names,
     email,
-    matric,
+    mat_no,
     password,
   ) {
     const [result] = await db.query(
       `INSERT INTO students (department_id, level_id, first_name, last_name, other_names, email, mat_no, password, created_at, updated_at, role, blocked)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
       [
-        department,
-        level,
+        department_id,
+        level_id,
         first_name,
         last_name,
         other_names,
         email,
-        matric,
+        mat_no,
         password,
         "student",
         0,

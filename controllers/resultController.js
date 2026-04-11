@@ -229,12 +229,12 @@ exports.bulkUploadResults = async (req, res) => {
         .json({ success: false, code: 400, message: "No file uploaded!" });
     }
     const resultsFile = req.file;
-    const { session_id, course_id, semester_id } = req.body;
-    if (!session_id || !semester_id) {
+    const { session_id, course_id, semester_id, level_id } = req.body;
+    if (!session_id || !semester_id || !course_id || !level_id) {
       return res.status(400).json({
         success: false,
         code: 400,
-        message: "Session ID and Semester ID are required!",
+        message: "All fields are required!",
       });
     }
     const course = await Course.findById(course_id);
@@ -304,6 +304,7 @@ exports.bulkUploadResults = async (req, res) => {
             const inserted = await Result.createResult(
               mat_no,
               course_id,
+              level_id,
               parseFloat(r.cat),
               parseFloat(r.mid_term),
               parseFloat(r.exam_score),
@@ -391,7 +392,7 @@ exports.getResultsByStudent = async (req, res) => {
                 WHERE results.mat_no = ?
                 AND results.session_id = ?
                 AND results.semester_id = ?
-                AND courses.level_id = ? 
+                AND results.level_id = ? 
                 AND results.approved = 1 
                 AND results.blocked = 0
                 AND results.is_deleted = 0`,
@@ -631,40 +632,40 @@ exports.getallResultsforDepartment = async (req, res) => {
     }
     const [results] = await db.query(
       `SELECT 
-                students.mat_no as matric,
-                CONCAT(students.last_name, ', ', students.first_name, ' ', students.other_names) AS student_name,
-                departments.name AS department_name,
-                levels.name AS level_name,
-                sessions.name AS session_name,
-                semesters.name AS semester_name,
-                faculties.name AS faculty_name,
+                s.mat_no as matric,
+                CONCAT(s.last_name, ', ', s.first_name, ' ', s.other_names) AS student_name,
+                d.name AS department_name,
+                l.name AS level_name,
+                sa.name AS session_name,
+                se.name AS semester_name,
+                f.name AS faculty_name,
                 JSON_ARRAYAGG(
                     JSON_OBJECT(
-                        'id', results.id,
-                        'code', courses.code,
-                        'name', courses.name,
-                        'grade', results.grade,
-                        'cat', results.cat,
-                        'mid_term', results.mid_term,
-                        'exam_score', results.exam_score,
-                        'total_score', results.cat + results.mid_term + results.exam_score,
-                        'credit_load', courses.credit_load
+                        'id', r.id,
+                        'code', c.code,
+                        'name', c.name,
+                        'grade', r.grade,
+                        'cat', r.cat,
+                        'mid_term', r.mid_term,
+                        'exam_score', r.exam_score,
+                        'total_score', r.cat + r.mid_term + r.exam_score,
+                        'credit_load', c.credit_load
                     )
                 ) AS courses_info
-            FROM students
-            JOIN departments ON students.department_id = departments.id
-            JOIN faculties ON departments.faculty_id = faculties.id
-            JOIN results ON students.mat_no = results.mat_no
-            JOIN courses ON results.course_id = courses.id
-            JOIN levels ON courses.level_id = levels.id
-            JOIN sessions ON results.session_id = sessions.id
-            JOIN semesters ON results.semester_id = semesters.id
-            WHERE departments.id = ?
-            AND results.session_id = ?
-            AND results.semester_id = ?
-            AND results.is_deleted = 0
-            GROUP BY students.mat_no, students.first_name, students.last_name, students.other_names, departments.name, levels.name
-            ORDER BY students.mat_no ASC`,
+            FROM students s
+            JOIN departments d ON s.department_id = d.id
+            JOIN faculties f ON d.faculty_id = f.id
+            JOIN results r ON s.mat_no = r.mat_no
+            JOIN courses c ON r.course_id = c.id
+            JOIN levels l ON r.level_id = l.id
+            JOIN sessions sa ON r.session_id = sa.id
+            JOIN semesters se ON r.semester_id = se.id
+            WHERE d.id = ?
+            AND r.session_id = ?
+            AND r.semester_id = ?
+            AND r.is_deleted = 0
+            GROUP BY s.mat_no, s.first_name, s.last_name, s.other_names, d.name, l.name
+            ORDER BY s.mat_no ASC`,
       [departmentId, session, semester],
     );
     return res.status(200).json({ success: true, code: 200, results });

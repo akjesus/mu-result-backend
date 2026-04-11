@@ -85,25 +85,26 @@ exports.getUserById = async (req, res) => {
 };
 
 exports.createStudent = async (req, res) => {
+  console.log(req.body);
   try {
     const {
-      department,
-      level,
+      department_id,
+      level_id,
       first_name,
       other_names,
       last_name,
       email,
-      matric,
+      mat_no,
     } = req.body;
 
     if (
-      !department ||
-      !level ||
+      !department_id ||
+      !level_id ||
       !first_name ||
       !other_names ||
       !last_name ||
       !email ||
-      !matric
+      !mat_no
     ) {
       return res.status(400).json({
         success: false,
@@ -112,21 +113,25 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    const existing = await Student.findByEmailAndMatric(email, matric);
+    const existing = await Student.findByEmailAndMatric(email, mat_no);
     if (existing) {
       return res
         .status(409)
-        .json({ success: false, code: 409, message: "Email or matric number exists already" });
+        .json({
+          success: false,
+          code: 409,
+          message: "Email or matric number exists already",
+        });
     }
     const password = await bcrypt.hash("password", 10);
     const studentId = await Student.createStudent(
-      department,
-      level,
+      department_id,
+      level_id,
       first_name,
       last_name,
       other_names,
       email,
-      matric,
+      mat_no,
       password,
     );
     return res.status(201).json({
@@ -159,14 +164,18 @@ exports.resetPassword = async (req, res) => {
         .json({ success: false, code: 404, message: "Student not found!" });
     }
     const newPassword = await bcrypt.hash("password", 10);
-    const [result] = await Student.execute(`UPDATE students SET password = ? WHERE id = ?`, [
-      newPassword,
-      id,
-    ]);
-    if(result.changedRows === 0) {
+    const [result] = await Student.execute(
+      `UPDATE students SET password = ? WHERE id = ?`,
+      [newPassword, id],
+    );
+    if (result.changedRows === 0) {
       return res
         .status(500)
-        .json({ success: false, code: 500, message: "Failed to reset password" });
+        .json({
+          success: false,
+          code: 500,
+          message: "Failed to reset password",
+        });
     }
     return res
       .status(200)
@@ -200,8 +209,15 @@ exports.deleteUser = async (req, res) => {
 exports.updateStudent = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { first_name, last_name, other_names, matric, email, department, level } =
-      req.body;
+    const {
+      first_name,
+      last_name,
+      other_names,
+      mat_no,
+      email,
+      department_id,
+      level_id,
+    } = req.body;
     const student = await Student.findById(id);
     if (!student) {
       return res
@@ -213,15 +229,19 @@ exports.updateStudent = async (req, res) => {
       last_name,
       other_names,
       email,
-      mat_no: matric,
-      department_id: department,
-      level_id: level,
+      mat_no,
+      department_id,
+      level_id
     });
 
     if (!updated) {
       return res
         .status(500)
-        .json({ success: false, code: 500, message: "Failed to update student" });
+        .json({
+          success: false,
+          code: 500,
+          message: "Failed to update student",
+        });
     }
     return res.status(200).json({
       success: true,
@@ -312,7 +332,7 @@ exports.bulkUploadStudents = async (req, res) => {
         let insertedCount = 0;
         let errorCount = 0;
         let errorRows = [];
-        let  duplicateCount = 0;
+        let duplicateCount = 0;
         let duplicateRows = [];
         for (const s of students) {
           const mat_no = s.mat_no;
@@ -323,8 +343,7 @@ exports.bulkUploadStudents = async (req, res) => {
               duplicateCount++;
               duplicateRows.push({ row: s, error: "Duplicate matric number" });
               console.log(`Duplicate found for ${mat_no}, skipping.`);
-              continue; 
-              
+              continue;
             }
             await Student.createStudent(
               s.department_id,
@@ -480,9 +499,9 @@ exports.getStudentsByDepartment = async (req, res) => {
   try {
     let query = `
       SELECT students.id as id, concat(last_name, ', ', first_name, ' ', other_names) as name,
-      first_name, last_name, other_names, mat_no as matric, email, 
-      departments.id as departmentId, 
-      faculties.id as schoolId, levels.id as levelId
+      first_name, last_name, other_names, mat_no, email, 
+      departments.id as department_id, 
+      faculties.id as school_id, levels.id as level_id
       FROM students
       JOIN departments ON students.department_id = departments.id
       JOIN faculties ON departments.faculty_id = faculties.id
