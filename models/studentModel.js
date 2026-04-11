@@ -135,5 +135,20 @@ class Student {
     );
     return rows[0];
   }
+  static async updateStudent(id, updates) {
+   let query = "UPDATE students SET ";
+    const params = [];
+    Object.keys(updates).forEach((key, index) => {
+      query += `${key} = ?`;
+      if (index < Object.keys(updates).length - 1) {
+        query += ", ";
+      }
+      params.push(updates[key]);
+    });
+    query += ", updated_at = NOW() WHERE id = ?";
+    params.push(id);
+    const [result] = await db.query(query, params);
+    return result.affectedRows > 0 ? true : false;
+  }
 }
 module.exports = Student;

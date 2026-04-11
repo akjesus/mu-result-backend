@@ -200,7 +200,7 @@ exports.deleteUser = async (req, res) => {
 exports.updateStudent = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { first_name, last_name, other_names, email, department, level } =
+    const { first_name, last_name, other_names, matric, email, department, level } =
       req.body;
     const student = await Student.findById(id);
     if (!student) {
@@ -208,18 +208,21 @@ exports.updateStudent = async (req, res) => {
         .status(404)
         .json({ success: false, code: 404, message: "Student not found" });
     }
-    const updated = await Student.execute(
-      `
-            UPDATE students
-            SET first_name = ?, 
-            last_name = ?, 
-            other_names = ?,
-            email = ?, 
-            department_id = ?,
-            level_id = ? 
-            WHERE id = ?`,
-      [first_name, last_name, other_names, email, department, level, id],
-    );
+    const updated = await Student.updateStudent(id, {
+      first_name,
+      last_name,
+      other_names,
+      email,
+      mat_no: matric,
+      department_id: department,
+      level_id: level,
+    });
+
+    if (!updated) {
+      return res
+        .status(500)
+        .json({ success: false, code: 500, message: "Failed to update student" });
+    }
     return res.status(200).json({
       success: true,
       code: 200,
