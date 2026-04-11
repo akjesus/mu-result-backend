@@ -557,15 +557,23 @@ class Result {
     );
     return approved;
   }
-  static async blockResult (mat_no, session_id, semester_id) {
+  static async blockResult(mat_no, session_id, semester_id) {
     const [result] = await db.query(
       `UPDATE results 
        SET blocked = 1
        WHERE mat_no = ? AND session_id = ? AND semester_id = ?`,
-      [mat_no, session_id, semester_id]
+      [mat_no, session_id, semester_id],
     );
     return result.changedRows > 0 ? true : false;
   }
-
+  static async unBlockResult(mat_no, session_id, semester_id) {
+    const [result] = await db.query(
+      `UPDATE results 
+       SET blocked = 0
+       WHERE mat_no = ? AND session_id = ? AND semester_id = ?`,
+      [mat_no, session_id, semester_id],
+    );
+    return result.changedRows > 0 ? true : false;
+  }
 }
 module.exports = Result;

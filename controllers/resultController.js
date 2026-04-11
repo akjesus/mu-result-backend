@@ -819,7 +819,7 @@ exports.toggleApproval = async (req, res) => {
 };
 
 exports.blockResults = async (req, res) => {
-  const { session_id, semester_id } = req.body;
+  const { session_id, semester_id, action } = req.body;
   if (!session_id || !semester_id) {
     return res.status(400).json({
       success: false,
@@ -850,8 +850,21 @@ exports.blockResults = async (req, res) => {
         let errorRows = [];
         for (const r of blockList) {
           const mat_no = r.mat_no;
+          let blocked;
           try {
-            const blocked = await Result.blockResult(mat_no, session_id, semester_id);
+            if (action === "unblock") {
+              blocked = await Result.unBlockResult(
+                mat_no,
+                session_id,
+                semester_id,
+              );
+            } else {
+              blocked = await Result.blockResult(
+                mat_no,
+                session_id,
+                semester_id,
+              );
+            }
             if (blocked) {
               blockedCount++;
             }
@@ -872,14 +885,14 @@ exports.blockResults = async (req, res) => {
           return res.status(202).json({
             success: false,
             code: 202,
-            message: `${blockedCount} results blocked, ${errorCount} errors (see server logs for details)`,
+            message: `${blockedCount} results affected, ${errorCount} errors (see server logs for details)`,
             errors: errorRows,
           });
         } else {
           return res.status(200).json({
             success: true,
             code: 200,
-            message: `${blockedCount} results blocked successfully`,
+            message: `${blockedCount} results affected, ${errorCount} errors (see server logs for details)`,
           });
         }
       })

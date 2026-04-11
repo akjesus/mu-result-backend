@@ -7,7 +7,15 @@ class Student {
   static async findByUsername(username) {
     const [rows] = await db.query(
       `SELECT * FROM students WHERE LOWER(mat_no) = ? or email = ?`,
-      [username.toLowerCase(), username],
+      [username.toLowerCase(), username.toLowerCase()],
+    );
+    console.log(rows)
+    return rows[0];
+  }
+  static async findByEmailAndMatric(email, matric) {
+    const [rows] = await db.query(
+      `SELECT * FROM students WHERE LOWER(email) = ? OR LOWER(mat_no) = ?`, 
+      [email.toLowerCase(), matric.toLowerCase()],
     );
     return rows[0];
   }

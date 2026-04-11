@@ -112,11 +112,11 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    const existing = await Student.findByUsername(email);
+    const existing = await Student.findByEmailAndMatric(email, matric);
     if (existing) {
       return res
         .status(409)
-        .json({ success: false, code: 409, message: "Email exists already" });
+        .json({ success: false, code: 409, message: "Email or matric number exists already" });
     }
     const password = await bcrypt.hash("password", 10);
     const studentId = await Student.createStudent(
