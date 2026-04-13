@@ -98,8 +98,8 @@ exports.resetPassword = async (req, res) => {
 };
 
 exports.createStaff = async (req, res) => {
-  const { first_name, last_name, email, username } = req.body;
-  if (!first_name || !last_name || !email || !username) {
+  const { first_name, last_name, email, username, role } = req.body;
+  if (!first_name || !last_name || !email || !username || !role) {
     return res
       .status(400)
       .json({ success: false, code: 400, message: "All fields are required" });
@@ -119,6 +119,7 @@ exports.createStaff = async (req, res) => {
       last_name,
       email,
       username,
+      role
     );
     const newStaff = await Staff.findById(staffId);
     return res.status(201).json({

@@ -17,12 +17,12 @@ class Staff {
     const [rows] = await db.query("SELECT * FROM staff WHERE id = ?", [id]);
     return rows.length ? rows[0] : null;
   }
-  static async createStaff(firstName, lastName, email, username) {
+  static async createStaff(firstName, lastName, email, username, role) {
     const password = await bcrypt.hash("staff1234", 10);
     const [result] = await db.query(
       `INSERT INTO staff (role, first_name, last_name, email, username, password, created_at, updated_at)
-       VALUES ('staff', ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [firstName, lastName, email, username, password],
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [role, firstName, lastName, email, username, password],
     );
     return result.insertId;
   }
@@ -50,12 +50,12 @@ class Staff {
     );
     return result.affectedRows > 0;
   }
-  static async updateStaff(id, firstName, lastName, email, username) {
+  static async updateStaff(id, firstName, lastName, email, username, role) {
     const [result] = await db.query(
       `UPDATE staff 
-       SET first_name = ?, last_name = ?, email = ?, username = ?, updated_at = NOW() 
+       SET first_name = ?, last_name = ?, email = ?, username = ?, role = ?, updated_at = NOW() 
        WHERE id = ?`,
-      [firstName, lastName, email, username, id],
+      [firstName, lastName, email, username, role, id],
     );
     return result.affectedRows > 0;
   }

@@ -8,7 +8,7 @@ router.use(verifyToken); // Protect all routes after this middleware
 router.get("/", courseController.getAllCourses);
 router.get("/:id", courseController.getCourseById);
 
-router.use(restrictTo("admin", "superadmin"));
+router.use(restrictTo("admin", "superadmin", "ict"));
 router.delete("/:id", courseController.deleteCourse);
 router.post("/", courseController.createCourse);
 router.put("/:id", courseController.updateCourse);
