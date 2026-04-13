@@ -37,9 +37,6 @@ class Result {
   ) {
     const totalScore = Number(cat) + Number(mid_term) + Number(exam_score);
     const grade = Result.calculateGrade(totalScore);
-    if(cat > 15 || mid_term > 15 || exam_score > 70) {
-      return { error: "Invalid score values. CAT must be <= 15, Mid-term must be <= 15, and Exam score must be <= 70." };
-    }
     try {
       const [result] = await db.query(
         `INSERT INTO results
