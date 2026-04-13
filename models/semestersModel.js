@@ -9,17 +9,17 @@ class Semester {
     const [rows] = await db.query("SELECT * FROM semesters WHERE id = ?", [id]);
     return rows.length ? rows[0] : null;
   }
-  static async createSemester(name, sessionId) {
+  static async createSemester(name, session_id) {
     const [result] = await db.query(
       "INSERT INTO semesters (name, session_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())",
-      [name, sessionId],
+      [name, session_id],
     );
-    return result.insertId;
+    return result.affectedRows > 0 ? true: false;
   }
-  static async updateSemester(id, name, sessionId) {
+  static async updateSemester(id, name, session_id) {
     const [result] = await db.query(
       "UPDATE semesters SET name = ?, session_id = ?, updated_at = NOW() WHERE id = ?",
-      [name, sessionId, id],
+      [name, session_id, id],
     );
     return result.affectedRows > 0;
   }
@@ -51,8 +51,8 @@ class Semester {
       sessions.id as session_id, 
       sessions.name as session_name
       FROM semesters
-      JOIN sessions ON semesters.session_id = sessions.id `
-    )
+      JOIN sessions ON semesters.session_id = sessions.id `,
+    );
     return rows;
   }
 }

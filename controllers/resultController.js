@@ -108,6 +108,7 @@ exports.createResult = async (req, res) => {
       exam_score,
       semester_id,
       session_id,
+      level_id,
     } = req.body.results;
 
     if (
@@ -117,7 +118,8 @@ exports.createResult = async (req, res) => {
       !mid_term ||
       !exam_score ||
       !semester_id ||
-      !session_id
+      !session_id ||
+      !level_id
     ) {
       return res.status(400).json({
         success: false,
@@ -135,9 +137,10 @@ exports.createResult = async (req, res) => {
       });
     }
 
-    const newResultId = await Result.createResult(
+    const created = await Result.createResult(
       mat_no,
       course_id,
+      level_id,
       cat,
       mid_term,
       exam_score,
@@ -145,12 +148,19 @@ exports.createResult = async (req, res) => {
       semester_id,
       created_by,
     );
-    return res.status(201).json({
-      success: true,
-      code: 201,
-      message: "Result created successfully",
-      result_id: newResultId,
-    });
+    if (created.error) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: created.error,
+      });
+    } else {
+      return res.status(201).json({
+        success: true,
+        code: 201,
+        message: "Result created successfully",
+      });
+    }
   } catch (error) {
     console.log("Error creating result:", error.message);
     return res

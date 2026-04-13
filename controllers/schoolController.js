@@ -257,58 +257,6 @@ exports.getLevels = async (req, res) => {
   }
 };
 
-exports.getSemestersForSession = async (req, res) => {
-  const sessionId = parseInt(req.params.id);
-  try {
-    const semesters = await Session.getSemestersForSession(sessionId);
-    if (!semesters) {
-      console.log("No semesters found for session ID:", sessionId);
-      return res.status(404).json({
-        success: false,
-        code: 404,
-        message: "No semesters found for this session",
-      });
-    }
-    return res.status(200).json({ success: true, code: 200, semesters });
-  } catch (error) {
-    console.log("Error fetching semesters for session:", error);
-    return res
-      .status(500)
-      .json({ success: false, code: 500, message: error.message });
-  }
-};
-
-exports.activateSemester = async (req, res) => {
-  const semesterId = parseInt(req.params.id);
-  try {
-    const semester = await Semester.findById(semesterId);
-    if (!semester) {
-      return res
-        .status(404)
-        .json({ success: false, code: 404, message: "Semester not found" });
-    }
-    const activated = await Semester.activateSemester(semesterId);
-    if (activated) {
-      return res.status(200).json({
-        success: true,
-        code: 200,
-        message: "Semester activated successfully",
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        code: 500,
-        message: "Failed to activate semester",
-      });
-    }
-  } catch (error) {
-    console.log("Error activating semester:", error);
-    return res
-      .status(500)
-      .json({ success: false, code: 500, message: error.message });
-  }
-};
-
 exports.getAllSessions = async (req, res) => {
   try {
     const sessions = await Session.getSessions();
@@ -413,7 +361,7 @@ exports.getAllSemestersWithSessions = async (req, res) => {
     const sessions = semesters
       .map((semester, index) => {
         return {
-          id:index,
+          id: index,
           session_id: semester.session_id,
           session_name: semester.session_name,
         };
@@ -423,5 +371,135 @@ exports.getAllSemestersWithSessions = async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.deleteSemester = async (req, res) => {
+  const semesterId = parseInt(req.params.id);
+  try {
+    const semester = await Semester.findById(semesterId);
+    if (!semester) {
+      return res
+        .status(404)
+        .json({ success: false, code: 404, message: "Semester not found" });
+    }
+    const deleted = await Semester.deleteSemester(semesterId);
+    if (deleted) {
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Semester deleted successfully",
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to delete semester",
+      });
+    }
+  } catch (error) {
+    console.log("Error deleting semester:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
+exports.getSemestersForSession = async (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  try {
+    const semesters = await Session.getSemestersForSession(sessionId);
+    if (!semesters) {
+      console.log("No semesters found for session ID:", sessionId);
+      return res.status(404).json({
+        success: false,
+        code: 404,
+        message: "No semesters found for this session",
+      });
+    }
+    return res.status(200).json({ success: true, code: 200, semesters });
+  } catch (error) {
+    console.log("Error fetching semesters for session:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
+
+exports.activateSemester = async (req, res) => {
+  const semesterId = parseInt(req.params.id);
+  try {
+    const semester = await Semester.findById(semesterId);
+    if (!semester) {
+      return res
+        .status(404)
+        .json({ success: false, code: 404, message: "Semester not found" });
+    }
+    const activated = await Semester.activateSemester(semesterId);
+    if (activated) {
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Semester activated successfully",
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Failed to activate semester",
+      });
+    }
+  } catch (error) {
+    console.log("Error activating semester:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
+  }
+};
+
+exports.createSemester = async (req, res) => {
+  const { name, session_id } = req.body;
+  try {
+    const session = await Session.findById(session_id);
+    if (!session) {
+      return res
+        .status(404)
+        .json({ success: false, code: 404, message: "Session not found" });
+    }
+    const [existingSemester] = await db.query(
+      "SELECT * FROM semesters WHERE name = ? AND session_id = ?",
+      [name, session_id]
+    );
+    if (existingSemester.length > 0) {
+      return res.status(400).json({
+        success: false,
+        code: 400,
+        message: "Semester with this name already exists for the selected session",
+      });
+    }
+    const semester = await Semester.createSemester(name, session_id);
+    if (semester)
+      return res.status(201).json({
+        success: true,
+        code: 201,
+        message: "Semester created Successfully!",
+      });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      code: 500,
+      error: error.message,
+    });
+  }
+};
+
+exports.getAllSemesters = async (req, res) => {
+  try {
+    const semesters = await Semester.getAllSemesters();
+    return res.status(200).json({ success: true, code: 200, semesters });
+  } catch (error) {
+    console.log("Error fetching all semesters:", error);
+    return res
+      .status(500)
+      .json({ success: false, code: 500, message: error.message });
   }
 };

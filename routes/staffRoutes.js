@@ -8,12 +8,12 @@ router.use(verifyToken);
 router.get("/me", staffController.getMyProfile);
 router.post("/me/change-password", staffController.changeMyPassword);
 
-router.use(restrictTo("admin", "superadmin", "staff"));
+router.use(restrictTo("admin", "superadmin", "staff", "ict"));
 router.get('/', staffController.getAllStaff);
 router.post('/', staffController.createStaff);
 router.get('/:id', staffController.getStaffById);
 
-router.use(restrictTo("admin", "superadmin"));
+router.use(restrictTo("ict", "admin", "superadmin"));
 router.delete('/:id',  staffController.deleteStaff);
 router.patch('/:id',  staffController.resetPassword);
 router.put('/:id',  staffController.updateStaff);
