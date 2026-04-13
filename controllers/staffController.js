@@ -70,6 +70,11 @@ exports.resetPassword = async (req, res) => {
         .status(404)
         .json({ success: false, code: 404, message: "Staff not found" });
     }
+    if(staff.role === "superadmin") {
+      return res.status(403).json({
+        success: false, code: 403, message: "You are not allowed to reset password for superadmin"
+      });
+    }
     const hashedPassword = await bcrypt.hash("staff1234", 10);
     const updated = await Staff.updatePassword(staffId, hashedPassword);
     if (!updated) {
